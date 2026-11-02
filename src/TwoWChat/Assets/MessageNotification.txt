@@ -1,0 +1,14 @@
+Notification audio supplied by the user on 2026-11-02.
+Original filename: kogane-jjk-made-with-Voicemod (mp3cut.net).mp3
+Original size: 21933 bytes.
+Original SHA-256:
+D2C2537A6F6A30A096FFA77CE3844BF36E8984D51A0B7C527DE0CB512513C516
+
+MessageNotification.mp3 is an unchanged copy of that original.
+MessageNotification.wav is the full clip decoded using Windows ACM via NAudio.
+PCM: 48000 Hz, stereo, 16 bit, 258048 bytes, 1.344 seconds.
+WAV SHA-256:
+7323FB1151F8AF555E75F184B6BDC4E26238C131CB2955F896A3380214FD9DA3
+
+Only the WAV is embedded in the application. No external sound file is
+required at runtime. The decoding helper is Tools/AudioAssetBuilder.

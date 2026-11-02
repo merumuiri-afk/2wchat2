@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>2WChat</AssemblyName>
+    <RootNamespace>TwoWChat</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <Version>1.5.0</Version>
+    <Product>2WChat</Product>
+    <Description>Голосовой и текстовый чат для LAN и VPN</Description>
+    <Company>2WChat</Company>
+    <PublishTrimmed>false</PublishTrimmed>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TwoWChat.Core\TwoWChat.Core.csproj" />
+    <PackageReference Include="NAudio.WinMM" Version="2.4.0" />
+    <PackageReference Include="Concentus.Native" Version="1.5.2" />
+    <EmbeddedResource Include="Assets\MessageNotification.wav" LogicalName="TwoWChat.Assets.MessageNotification.wav" />
+  </ItemGroup>
+</Project>

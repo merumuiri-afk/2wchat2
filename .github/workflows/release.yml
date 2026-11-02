@@ -1,0 +1,29 @@
+name: Windows release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check tag and project version
+        shell: pwsh
+        run: |
+          $project = [xml](Get-Content -Raw src/TwoWChat/TwoWChat.csproj)
+          if ($env:GITHUB_REF_NAME -ne ('v' + $project.Project.PropertyGroup.Version)) { throw 'Tag must match project Version' }
+      - name: Build and check
+        shell: pwsh
+        run: ./Tools/Build.ps1 -SkipUiSmoke
+      - name: Create release with archive
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          gh release view $env:GITHUB_REF_NAME --json isDraft --jq '.isDraft' 2>$null
+          if ($LASTEXITCODE -eq 0) { Write-Host 'Release already exists; keeping its original assets.'; exit 0 }
+          gh release create $env:GITHUB_REF_NAME "dist/2WChat-$version-win-x64.zip" dist/SHA256SUMS.txt --verify-tag --title "2WChat $version" --notes-file RELEASE-NOTES.md --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

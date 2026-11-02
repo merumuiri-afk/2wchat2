@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "NAudio.WinMM": {
+        "type": "Direct",
+        "requested": "[2.4.0, )",
+        "resolved": "2.4.0",
+        "contentHash": "mipx4Wx/C2c/ajptYaInJyakSq+33TjfQWSjFuOoq7JnU2E7nIkZj6pf9Qx4AwExPQ094Gn9R/jt52agiETkwQ==",
+        "dependencies": {
+          "NAudio.Core": "2.4.0"
+        }
+      },
+      "NAudio.Core": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "VDXi1Wp1CUFgMxYyyajaG8sM9c9v5Mf2AdJkYUnksqwENSqVlrXsPe9l/mG55pNIv9eMYXGHiIxVuhS7+a3BQg=="
+      }
+    }
+  }
+}

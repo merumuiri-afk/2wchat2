@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "Concentus": {
+        "type": "Transitive",
+        "resolved": "2.2.2",
+        "contentHash": "2B9YmHPKO+k7YpAAnqmiXwiMJnfjfj1C868RszOll2iZWLnGTAiC1q21L/d7CvTan7T+hyqU8dR0Dcy3cpjVfQ=="
+      },
+      "Concentus.Native": {
+        "type": "Transitive",
+        "resolved": "1.5.2",
+        "contentHash": "Vv5JirlvJpHxsF16yP3sB3EUUxsgWRJTqTQ219WDo+NEjkwI8AvYpJD3TxGE4kJsswE/hqQRJJuIIOIcKcMflg==",
+        "dependencies": {
+          "Concentus.Native.NetCore": "1.5.1"
+        }
+      },
+      "Concentus.Native.NetCore": {
+        "type": "Transitive",
+        "resolved": "1.5.2",
+        "contentHash": "ry9TdS2Su3dOtWalTT6d0aJyx3NPQ/NjisotmAKxmgPdnhYpymZeZHZz4WnRA5Vw71yUnhj1lHqPQP71O5hHTg=="
+      },
+      "NAudio.Core": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "VDXi1Wp1CUFgMxYyyajaG8sM9c9v5Mf2AdJkYUnksqwENSqVlrXsPe9l/mG55pNIv9eMYXGHiIxVuhS7+a3BQg=="
+      },
+      "NAudio.WinMM": {
+        "type": "Transitive",
+        "resolved": "2.4.0",
+        "contentHash": "mipx4Wx/C2c/ajptYaInJyakSq+33TjfQWSjFuOoq7JnU2E7nIkZj6pf9Qx4AwExPQ094Gn9R/jt52agiETkwQ==",
+        "dependencies": {
+          "NAudio.Core": "2.4.0"
+        }
+      },
+      "2WChat": {
+        "type": "Project",
+        "dependencies": {
+          "Concentus.Native": "[1.5.2, )",
+          "NAudio.WinMM": "[2.4.0, )",
+          "TwoWChat.Core": "[1.0.0, )"
+        }
+      },
+      "twowchat.core": {
+        "type": "Project",
+        "dependencies": {
+          "Concentus": "[2.2.2, )"
+        }
+      }
+    }
+  }
+}
