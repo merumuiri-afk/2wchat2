@@ -20,6 +20,7 @@ public sealed class ChatView : UserControl
         foreach (var row in _rows) if (row.Entry is { } entry) row.SetAvatar(AvatarPreparation.Render(resolver(entry.Sender), entry.Name));
     }
     public event Action<ImagePayload>? ImageOpenRequested;
+    public event Action<Guid, string>? AvatarOpenRequested;
     public event Action<ImageInfo>? ImageRequested;
     public event Action<string>? Error;
     public int ImageCount => _rows.Count(r => r.Entry?.Image != null);
@@ -52,6 +53,7 @@ public sealed class ChatView : UserControl
         row.SetAvatar(AvatarPreparation.Render(_avatarResolver(entry.Sender), entry.Name));
         row.OpenRequested += image => ImageOpenRequested?.Invoke(image);
         row.DownloadRequested += info => ImageRequested?.Invoke(info);
+        row.AvatarRequested += () => AvatarOpenRequested?.Invoke(entry.Sender, entry.Name);
         Add(row);
     }
     public void AddNotice(string text) => Add(new ChatRow(null, text, false, Font, _menu));
@@ -126,6 +128,7 @@ public sealed class ChatView : UserControl
         private bool _loading;
         public bool HasThumbnail => _picture.Image != null;
         public event Action<ImagePayload>? OpenRequested;
+        public event Action? AvatarRequested;
         public event Action<ImageInfo>? DownloadRequested;
 
         public ChatRow(ChatEntry? entry, string? notice, bool own, Font font, ContextMenuStrip menu)
@@ -146,6 +149,8 @@ public sealed class ChatView : UserControl
             _body.ForeColor = entry == null ? Color.DimGray : Color.Black; _body.TabStop = false;
             Controls.Add(_header); Controls.Add(_body);
             if (entry != null) Controls.Add(_avatar);
+            _avatar.Cursor = Cursors.Hand; _avatar.AccessibleName = "Открыть аватарку";
+            _avatar.DoubleClick += (_, _) => AvatarRequested?.Invoke();
             if (entry?.Image is { } image)
             {
                 _picture.SizeMode = PictureBoxSizeMode.Zoom; _picture.BorderStyle = BorderStyle.FixedSingle; _picture.Cursor = Cursors.Hand;

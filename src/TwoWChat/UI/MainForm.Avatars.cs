@@ -5,6 +5,11 @@ namespace TwoWChat.UI;
 public sealed partial class MainForm
 {
     private readonly ImageList _avatarIcons = new() { ImageSize = new Size(32, 32), ColorDepth = ColorDepth.Depth32Bit };
+    private void ShowAvatar(Guid id, string name)
+    {
+        using var viewer = new AvatarViewerForm(_client?.GetAvatar(id), name);
+        viewer.ShowDialog(this);
+    }
     private async Task OpenAvatarAsync()
     {
         if (_busy) return;

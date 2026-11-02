@@ -55,6 +55,14 @@ public sealed partial class MainForm
                 await Task.Delay(100);
                 if (_client.GetAvatar(bot.Id) == null || _avatarIcons.Images.Count != 2 || AppStore.Load().Avatar?.SequenceEqual(avatar) != true) throw new IOException("UI avatar transfer, icons or persistence failed");
                 results.Add("Local and remote avatars travel over TLS, persist in profile and populate participant icons");
+                using (var avatarViewer = new AvatarViewerForm(_client.GetAvatar(bot.Id), "Участник"))
+                {
+                    avatarViewer.Show(this); await Task.Delay(100);
+                    using var shot = new Bitmap(avatarViewer.Width, avatarViewer.Height);
+                    avatarViewer.DrawToBitmap(shot, new Rectangle(Point.Empty, avatarViewer.Size)); shot.Save(Path.Combine(directory, "avatar-viewer.png"));
+                    avatarViewer.Close();
+                }
+                results.Add("Avatar viewer renders the original avatar enlarged in a resizable window");
                 using var avatarDialog = new AvatarForm(avatar, "Участник"); avatarDialog.Show(this); await Task.Delay(100);
                 using (var bitmap = new Bitmap(avatarDialog.Width, avatarDialog.Height)) { avatarDialog.DrawToBitmap(bitmap, new Rectangle(Point.Empty, avatarDialog.Size)); bitmap.Save(Path.Combine(directory, "avatar-settings.png")); }
                 DescendantControls(avatarDialog).OfType<Button>().Single(b => b.Text == "Убрать аватарку").PerformClick();

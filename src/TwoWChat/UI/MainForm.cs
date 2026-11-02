@@ -68,6 +68,8 @@ public sealed partial class MainForm : Form
         _shareScreen.Click += async (_, _) => await ToggleScreenShareAsync();
         _watchScreen.Click += async (_, _) => await ToggleScreenViewerAsync();
         _chat.ImageOpenRequested += OpenImage;
+        _chat.AvatarOpenRequested += ShowAvatar;
+        _people.DoubleClick += (_, _) => { if (SelectedPeer() is { } peer) ShowAvatar(peer.Id, peer.Name); };
         _chat.ImageRequested += info => { if (_client?.Connected == true) _client.RequestImage(info); else _chat.ImageFailed(info.Id, "Соединение с комнатой закрыто."); };
         _chat.Error += AppendNotice;
         InitializeImageDrop();
