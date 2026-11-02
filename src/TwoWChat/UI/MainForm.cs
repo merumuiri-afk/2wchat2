@@ -98,6 +98,7 @@ public sealed partial class MainForm : Form
         var tools = new ToolStripMenuItem("&Сервис");
         tools.DropDownItems.Add("Настройки звука…", null, (_, _) => OpenSettings());
         tools.DropDownItems.Add("Моя аватарка…", null, async (_, _) => await OpenAvatarAsync());
+        tools.DropDownItems.Add("Предложить название комнаты…", null, async (_, _) => await ProposeRoomNameAsync());
         tools.DropDownItems.Add("Мой IP и подключение…", null, (_, _) => ShowAddresses());
         AddUpdateMenu(tools);
         var help = new ToolStripMenuItem("&Справка");

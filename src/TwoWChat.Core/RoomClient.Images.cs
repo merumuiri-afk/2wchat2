@@ -31,6 +31,7 @@ public sealed partial class RoomClient
     public async Task<ChatEntry> SendImageAsync(ImagePayload image, string caption = "", IProgress<int>? progress = null, CancellationToken cancellationToken = default)
     {
         if (!SupportsImages) throw new InvalidOperationException("Программа владельца комнаты не поддерживает картинки. Обновите её до версии 1.2.");
+        if (image.Info.ContentType == "image/gif" && !SupportsAnimatedGifs) throw new InvalidOperationException("Для GIF обновите программу владельца комнаты до 1.7.");
         ImageAttachments.Validate(image); caption = Protocol.CleanText(caption);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token, cancellationToken);
         await _uploadSerial.WaitAsync(stop.Token);

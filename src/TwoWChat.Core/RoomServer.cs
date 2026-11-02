@@ -12,7 +12,13 @@ namespace TwoWChat.Core;
 public sealed partial class RoomServer : IAsyncDisposable
 {
     private readonly X509Certificate2 _certificate;
-    private readonly string _room;
+    private string _room;
+    public void Rename(string name)
+    {
+        name = Protocol.CleanName(name, 40);
+        if (name.Length == 0) throw new ArgumentException("Введите название комнаты.");
+        lock (_gate) { _room = name; Broadcast(new WireMessage("room_name") { Room = name }); }
+    }
     private readonly byte[] _passwordHash;
     private readonly byte[] _salt = RandomNumberGenerator.GetBytes(32);
     private readonly CancellationTokenSource _stop = new();
@@ -133,12 +139,13 @@ public sealed partial class RoomServer : IAsyncDisposable
                         {
                             peer = new Peer(tcp, ssl, name, hello!.MicMuted, hello.Deafened, hello.SupportsImages, hello.SupportsScreenShare);
                             peer.SupportsAvatars = hello.SupportsAvatars;
+                            peer.SupportsAnimatedGifs = hello.SupportsAnimatedGifs;
                             _peers.Add(peer.Info.Id, peer);
                             _tokens[peer.Token] = peer;
                             peer.Queue(new WireMessage("welcome")
                             {
                                 Id = peer.Info.Id, Token = peer.Token, Key = Convert.ToBase64String(peer.Key), Room = _room,
-                                Members = _peers.Values.Select(p => p.Info).ToArray(), History = _history.ToArray(), SupportsImages = true,
+                                Members = _peers.Values.Select(p => p.Info).ToArray(), History = _history.Select(c => CompatibleChat(c, peer.SupportsAnimatedGifs)).ToArray(), SupportsImages = true, SupportsAnimatedGifs = true,
                                 SupportsScreenShare = true, SupportsAvatars = true, ScreenKey = Convert.ToBase64String(peer.ScreenKey), Screens = ScreenSnapshot(), Stamp = _screenRevision
                             });
                             if (peer.SupportsAvatars)
@@ -346,8 +353,9 @@ public sealed partial class RoomServer : IAsyncDisposable
 
     private void Broadcast(WireMessage message)
     {
-        foreach (var peer in _peers.Values) peer.Queue(message);
+        foreach (var peer in _peers.Values) peer.Queue(message.Chat == null ? message : message with { Chat = CompatibleChat(message.Chat, peer.SupportsAnimatedGifs) });
     }
+    private static ChatEntry CompatibleChat(ChatEntry chat, bool gifs) => !gifs && chat.Image?.ContentType == "image/gif" ? chat with { Image = null, Text = chat.Text + " [GIF: обновите 2WChat до 1.7]" } : chat;
 
     private void BroadcastMembers() => Broadcast(new WireMessage("members") { Members = _peers.Values.Select(p => p.Info).ToArray() });
 
@@ -434,6 +442,7 @@ public sealed partial class RoomServer : IAsyncDisposable
     {
         public PeerInfo Info;
         public bool SupportsAvatars;
+        public bool SupportsAnimatedGifs;
         public byte[] Avatar = [];
         public readonly RateLimit AvatarRate = new(1, 4);
         public readonly TcpClient Tcp;

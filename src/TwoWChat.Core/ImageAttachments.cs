@@ -21,14 +21,14 @@ public static class ImageAttachments
         foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
         name = Path.GetFileNameWithoutExtension(name).Trim().TrimEnd('.');
         if (name.Length == 0) name = "Изображение";
-        return name + (type == "image/png" ? ".png" : ".jpg");
+        return name + (type == "image/png" ? ".png" : type == "image/gif" ? ".gif" : ".jpg");
     }
 
     public static void ValidateInfo(ImageInfo? info)
     {
         if (info == null || info.Id == Guid.Empty || info.Length is < 24 or > Protocol.MaxImageBytes ||
             info.Width is < 1 or > Protocol.MaxImageDimension || info.Height is < 1 or > Protocol.MaxImageDimension ||
-            info.ContentType is not ("image/png" or "image/jpeg") ||
+            info.ContentType is not ("image/png" or "image/jpeg" or "image/gif") ||
             string.IsNullOrWhiteSpace(info.Sha256) || info.Sha256.Length != 64 || !info.Sha256.All(Uri.IsHexDigit))
             throw new InvalidDataException("Недопустимое изображение. Максимум — 8 МБ и 4096×4096 пикселей.");
     }
@@ -47,6 +47,8 @@ public static class ImageAttachments
     public static (string Type, int Width, int Height) Inspect(ReadOnlySpan<byte> data)
     {
         if (data.Length is < 24 or > Protocol.MaxImageBytes) throw new InvalidDataException("Изображение должно быть не больше 8 МБ.");
+        if (data[..6].SequenceEqual("GIF89a"u8) || data[..6].SequenceEqual("GIF87a"u8))
+            return Dimensions("image/gif", BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(6, 2)), BinaryPrimitives.ReadUInt16LittleEndian(data.Slice(8, 2)));
         if (data[..8].SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }) &&
             BinaryPrimitives.ReadInt32BigEndian(data.Slice(8, 4)) == 13 && data.Slice(12, 4).SequenceEqual("IHDR"u8))
             return Dimensions("image/png", BinaryPrimitives.ReadInt32BigEndian(data.Slice(16, 4)), BinaryPrimitives.ReadInt32BigEndian(data.Slice(20, 4)));

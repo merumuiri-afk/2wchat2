@@ -35,10 +35,28 @@ internal static partial class Program
             var client = new RoomClient(); await client.ConnectAsync("127.0.0.1", server.Port, name, "", false, false, p => p == server.Fingerprint); return client;
         }
         await using var a = await Join("Author"); await using var b = await Join("Viewer");
+        server.Rename("Новое название");
+        await Until(() => a.Room == "Новое название" && b.Room == "Новое название", "Owner-approved rename updates all connected clients");
+        var gifBytes = Convert.FromHexString("47494638396101000100800000000000FFFFFF21F904000A0000002C000000000100010000020244010021F904000A0000002C00000000010001000002024C01003B");
+        var gifPath = Path.Combine(_reportFolder, "animated.gif"); File.WriteAllBytes(gifPath, gifBytes);
+        var gif = ImagePreparation.FromFile(gifPath);
+        using (var animated = ImagePreparation.OpenAnimation(gif))
+        {
+            Check(animated.GetFrameCount(FrameDimension.Time) == 2 && gif.Data.SequenceEqual(gifBytes), "Animated GIF keeps original bytes and both frames");
+            animated.SelectActiveFrame(FrameDimension.Time, 0); var first = new Bitmap(animated).GetPixel(0, 0);
+            animated.SelectActiveFrame(FrameDimension.Time, 1); using var second = new Bitmap(animated);
+            Check(first != second.GetPixel(0, 0), "GIF frames decode to different visible pixels");
+            (animated.Tag as Stream)?.Dispose();
+        }
+        var delivered = new TaskCompletionSource<ImagePayload>(TaskCreationOptions.RunContinuationsAsynchronously);
+        b.ImageReceived += p => { if (p.Info.ContentType == "image/gif") delivered.TrySetResult(p); };
+        await a.SendImageAsync(gif, "Animated GIF");
+        Check((await delivered.Task.WaitAsync(TimeSpan.FromSeconds(8))).Data.SequenceEqual(gifBytes), "Animated GIF crosses TLS image transport without flattening");
         Check(a.SupportsAvatars && b.SupportsAvatars, "Room negotiates avatar capability separately from chat and images");
         await a.SetAvatarAsync(avatar);
         await Until(() => b.GetAvatar(a.Id)?.SequenceEqual(avatar) == true && a.GetAvatar(a.Id) != null, "Avatar reaches owner and another participant with identical bytes");
         await using var late = await Join("Late");
+        Check(late.Room == "Новое название", "Late joiner receives the approved room name");
         await Until(() => late.GetAvatar(a.Id)?.SequenceEqual(avatar) == true, "Late joiner receives avatars after its bounded welcome frame");
         await a.SendAsync(new WireMessage("avatar") { Id = b.Id, Data = avatar });
         await a.SendChatAsync("avatar identity probe");

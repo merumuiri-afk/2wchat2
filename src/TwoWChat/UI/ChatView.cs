@@ -83,7 +83,7 @@ public sealed class ChatView : UserControl
     }
     private void Trim()
     {
-        while (_rows.Count > 180 || _rows.Sum(r => r.PlainText.Length) > 250000 || _rows.Sum(r => r.Payload?.Data.Length ?? 0) > Protocol.ImageCacheBytes)
+        while (_rows.Count > 180 || _rows.Count(r => r.Entry?.Image?.ContentType == "image/gif") > 8 || _rows.Sum(r => r.PlainText.Length) > 250000 || _rows.Sum(r => r.Payload?.Data.Length ?? 0) > Protocol.ImageCacheBytes)
         {
             var first = _rows[0]; _rows.RemoveAt(0); _flow.Controls.Remove(first); first.Dispose();
         }
@@ -94,7 +94,7 @@ public sealed class ChatView : UserControl
         foreach (var row in rows)
         {
             try { await row.LoadImageAsync(image); }
-            catch (Exception e) when (e is ArgumentException or ExternalException or IOException or OutOfMemoryException)
+            catch (Exception e) when (e is ArgumentException or ExternalException or IOException or InvalidDataException or OutOfMemoryException)
             { if (!row.IsDisposed) row.SetError("Не удалось открыть изображение. Нажмите для повтора."); }
         }
         if (!IsDisposed) Trim();
@@ -182,8 +182,8 @@ public sealed class ChatView : UserControl
             if (_loading || IsDisposed || Payload != null) return; _loading = true;
             try
             {
-                var thumbnail = await Task.Run(() => ImagePreparation.Thumbnail(image));
-                if (IsDisposed) { thumbnail.Dispose(); return; }
+                Image thumbnail = await Task.Run(() => image.Info.ContentType == "image/gif" ? ImagePreparation.OpenAnimation(image) : ImagePreparation.Thumbnail(image));
+                if (IsDisposed) { var stream = thumbnail.Tag as Stream; thumbnail.Dispose(); stream?.Dispose(); return; }
                 Payload = image; var old = _picture.Image; _picture.Image = thumbnail; old?.Dispose();
                 _picture.Visible = true; _placeholder.Visible = false;
             }
@@ -197,7 +197,7 @@ public sealed class ChatView : UserControl
         }
         protected override void Dispose(bool disposing)
         {
-            if (disposing) { _avatar.Image?.Dispose(); _avatar.Image = null; var bitmap = _picture.Image; _picture.Image = null; bitmap?.Dispose(); _headingFont.Dispose(); Payload = null; }
+            if (disposing) { _avatar.Image?.Dispose(); _avatar.Image = null; var bitmap = _picture.Image; _picture.Image = null; var stream = bitmap?.Tag as Stream; bitmap?.Dispose(); stream?.Dispose(); _headingFont.Dispose(); Payload = null; }
             base.Dispose(disposing);
         }
     }

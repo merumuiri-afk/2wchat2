@@ -92,6 +92,7 @@ public sealed record WireMessage(string Type)
     public ChatEntry? Chat { get; init; }
     public bool SupportsImages { get; init; }
     public bool SupportsAvatars { get; init; }
+    public bool SupportsAnimatedGifs { get; init; }
     public ImageInfo? Image { get; init; }
     public byte[]? Data { get; init; }
     public int Offset { get; init; }

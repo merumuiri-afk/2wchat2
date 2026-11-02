@@ -171,6 +171,14 @@ public sealed partial class MainForm
                 results.Add("Received image bytes can be saved and reopened with the original dimensions");
             }
             await RunScreenUiSmokeAsync(directory, results, bot);
+            var gifData = Convert.FromHexString("47494638396101000100800000000000FFFFFF21F904000A0000002C000000000100010000020244010021F904000A0000002C00000000010001000002024C01003B");
+            await bot.SendImageAsync(ImageAttachments.Create(gifData, "animation.gif"), "GIF animation");
+            await Task.Delay(500);
+            if (!DescendantControls(_chat).OfType<PictureBox>().Any(p => p.Image != null && ImageAnimator.CanAnimate(p.Image))) throw new IOException("Chat did not retain an animated image");
+            results.Add("Received GIF is attached to an animation-capable PictureBox with original frames");
+            _server!.Rename("Переименованная комната"); await Task.Delay(150);
+            if (_room.Text != "Переименованная комната" || !_heading.Text.Contains("Переименованная комната")) throw new IOException("Room rename did not update UI");
+            results.Add("Owner-approved rename updates room field, heading and client state");
             using (var bitmap = new Bitmap(Width, Height)) { DrawToBitmap(bitmap, new Rectangle(Point.Empty, Size)); bitmap.Save(Path.Combine(directory, "main-window.png")); }
             using (var settings = new SettingsForm(_settings, true))
             {

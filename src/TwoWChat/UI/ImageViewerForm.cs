@@ -15,7 +15,7 @@ public sealed class ImageViewerForm : Form
         Font = new Font("Tahoma", 9); AutoScaleMode = AutoScaleMode.Dpi;
         StartPosition = FormStartPosition.CenterParent; ClientSize = new Size(760, 540); MinimumSize = new Size(500, 400);
         _viewport.Dock = DockStyle.Fill; _viewport.AutoScroll = true; _viewport.BackColor = Color.FromArgb(70, 70, 70);
-        _picture.Dock = DockStyle.Fill; _picture.SizeMode = PictureBoxSizeMode.Zoom; _picture.Image = ImagePreparation.Decode(image);
+        _picture.Dock = DockStyle.Fill; _picture.SizeMode = PictureBoxSizeMode.Zoom; _picture.Image = image.Info.ContentType == "image/gif" ? ImagePreparation.OpenAnimation(image) : ImagePreparation.Decode(image);
         _picture.AccessibleName = image.Info.FileName;
         _viewport.Controls.Add(_picture); Controls.Add(_viewport);
         var description = new Label { Text = " " + ImagePreparation.Description(image.Info), Dock = DockStyle.Top, Height = 28, TextAlign = ContentAlignment.MiddleLeft };
@@ -46,14 +46,14 @@ public sealed class ImageViewerForm : Form
             actions.Controls.Add(save); actions.Controls.Add(actual); AcceptButton = close;
         }
         bottom.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); bottom.Controls.Add(actions, 0, sending ? 1 : 0); Controls.Add(bottom);
-        FormClosed += (_, _) => { var bitmap = _picture.Image; _picture.Image = null; bitmap?.Dispose(); };
+        FormClosed += (_, _) => { var bitmap = _picture.Image; _picture.Image = null; var stream = bitmap?.Tag as Stream; bitmap?.Dispose(); stream?.Dispose(); };
     }
     public static void SaveImage(IWin32Window owner, ImagePayload image)
     {
         using var dialog = new SaveFileDialog
         {
             Title = "Сохранить изображение", FileName = image.Info.FileName,
-            Filter = image.Info.ContentType == "image/png" ? "PNG (*.png)|*.png" : "JPEG (*.jpg)|*.jpg", AddExtension = true
+            Filter = image.Info.ContentType == "image/png" ? "PNG (*.png)|*.png" : image.Info.ContentType == "image/gif" ? "GIF (*.gif)|*.gif" : "JPEG (*.jpg)|*.jpg", AddExtension = true
         };
         if (dialog.ShowDialog(owner) != DialogResult.OK) return;
         try { File.WriteAllBytes(dialog.FileName, image.Data); }

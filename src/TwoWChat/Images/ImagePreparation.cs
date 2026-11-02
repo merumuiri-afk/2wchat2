@@ -13,6 +13,16 @@ public static class ImagePreparation
         if (!IsImageFile(path)) throw new InvalidDataException("Выберите PNG, JPEG, GIF или BMP.");
         using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
         if (file.Length is <= 0 or > MaxSourceBytes) throw new InvalidDataException("Исходный файл должен быть не больше 32 МБ.");
+        if (Path.GetExtension(path).Equals(".gif", StringComparison.OrdinalIgnoreCase))
+        {
+            if (file.Length > Protocol.MaxImageBytes) throw new InvalidDataException("GIF должен быть не больше 8 МБ.");
+            var data = new byte[(int)file.Length]; file.ReadExactly(data);
+            var payload = ImageAttachments.Create(data, Path.GetFileName(path));
+            if (payload.Info.ContentType != "image/gif") throw new InvalidDataException("Некорректный GIF.");
+            using var verified = OpenAnimation(payload);
+            (verified.Tag as Stream)?.Dispose();
+            return payload;
+        }
         using var image = Image.FromStream(file, true, false);
         return Prepare(image, Path.GetFileName(path), Path.GetExtension(path).ToLowerInvariant() is ".jpg" or ".jpeg");
     }
@@ -20,7 +30,7 @@ public static class ImagePreparation
 
     private static ImagePayload Prepare(Image source, string name, bool jpeg)
     {
-        if (source.Width <= 0 || source.Height <= 0 || source.Width > 16384 || source.Height > 16384 || (long)source.Width * source.Height > 40000000)
+        if (source.Width <= 0 || source.Height <= 0 || source.Width > 16384 || source.Height > 16384 || (long)source.Width * source.Height > 320000000)
             throw new InvalidDataException("Исходное изображение слишком большое (максимум 40 мегапикселей).");
         // Apply photo orientation before stripping EXIF and other source metadata.
         try
@@ -81,6 +91,20 @@ public static class ImagePreparation
         using var graphics = Graphics.FromImage(bitmap);
         graphics.Clear(Color.White); graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
         graphics.DrawImage(decoded, new Rectangle(Point.Empty, bitmap.Size)); return bitmap;
+    }
+    public static Image OpenAnimation(ImagePayload payload)
+    {
+        ImageAttachments.Validate(payload);
+        var stream = new MemoryStream(payload.Data, false);
+        try
+        {
+            var image = Image.FromStream(stream, true, true);
+            var frames = image.GetFrameCount(System.Drawing.Imaging.FrameDimension.Time);
+            if (frames > 300 || (long)image.Width * image.Height * frames > 32000000)
+            { image.Dispose(); throw new InvalidDataException("GIF слишком большой: максимум 300 кадров и 32 млн пикселей суммарно по кадрам."); }
+            image.Tag = stream; return image;
+        }
+        catch { stream.Dispose(); throw; }
     }
     public static string Description(ImageInfo image) => $"{image.FileName}  •  {image.Width}×{image.Height}  •  {image.Length / 1048576d:F2} МБ";
 }

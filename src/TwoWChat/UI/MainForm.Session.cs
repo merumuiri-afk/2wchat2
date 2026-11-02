@@ -182,6 +182,11 @@ public sealed partial class MainForm
         switch (message.Type)
         {
             case "chat" when message.Chat != null:
+                if (_server != null && _historyReady && message.Chat.Text.StartsWith("Предлагаю название комнаты: ", StringComparison.Ordinal))
+                {
+                    var proposed = Protocol.CleanName(message.Chat.Text[27..], 40);
+                    if (proposed.Length > 0 && MessageBox.Show(this, message.Chat.Name + " предлагает название «" + proposed + "». Принять?", "Название комнаты", MessageBoxButtons.YesNo) == DialogResult.Yes) _server?.Rename(proposed);
+                }
                 if (!_historyReady) _pendingChats.Add(message.Chat);
                 else
                 {
@@ -190,6 +195,10 @@ public sealed partial class MainForm
                 }
                 break;
             case "members": RefreshMembers(); break;
+            case "room_name":
+                _room.Text = _client?.Room; _settings.RoomName = _room.Text; SaveSettings();
+                _roomLabel.Text = " " + _room.Text; RefreshMembers(); UpdateWindowCaption();
+                AppendNotice("Комната переименована: " + _room.Text); break;
             case "avatar": RefreshAvatarImages(); break;
             case "notice": AppendNotice(message.Text ?? ""); break;
         }
