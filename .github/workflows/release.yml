@@ -25,5 +25,6 @@ jobs:
           $version = $env:GITHUB_REF_NAME.Substring(1)
           gh release view $env:GITHUB_REF_NAME --json isDraft --jq '.isDraft' 2>$null
           if ($LASTEXITCODE -eq 0) { Write-Host 'Release already exists; keeping its original assets.'; exit 0 }
-          gh release create $env:GITHUB_REF_NAME "dist/2WChat-$version-win-x64.zip" dist/SHA256SUMS.txt --verify-tag --title "2WChat $version" --notes-file RELEASE-NOTES.md --latest
+          ./Tools/Build-Installer.ps1
+          gh release create $env:GITHUB_REF_NAME "dist/2WChat-$version-win-x64.zip" "dist/2WChat-$version-Setup.exe" dist/SHA256SUMS.txt dist/Setup-SHA256SUMS.txt --verify-tag --title "2WChat $version" --notes-file RELEASE-NOTES.md --latest
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
