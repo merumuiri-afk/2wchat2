@@ -33,14 +33,30 @@ internal sealed class StickerPickerForm : Form
     }
     private void RefreshItems()
     {
-        foreach (Control item in _items.Controls.Cast<Control>().ToArray()) { if (item is PictureBox p) p.Image?.Dispose(); item.Dispose(); } _items.Controls.Clear();
+        foreach (Control item in _items.Controls.Cast<Control>().ToArray()) { if (item is PictureBox p) { var stream = p.Image?.Tag as Stream; p.Image?.Dispose(); p.Image = null; stream?.Dispose(); } item.Dispose(); } _items.Controls.Clear();
         foreach (var file in StickerLibrary.Files().Take(100))
         {
             try
             {
                 var sticker = StickerLibrary.Load(file);
-                var image = new PictureBox { Size = new Size(88, 88), SizeMode = PictureBoxSizeMode.Zoom, Image = ImagePreparation.Decode(sticker), Cursor = Cursors.Hand, Margin = new Padding(6), BackColor = Color.WhiteSmoke };
-                image.Click += (_, _) => { Selected = sticker; DialogResult = DialogResult.OK; Close(); };
+                var image = new PictureBox { Size = new Size(88, 88), SizeMode = PictureBoxSizeMode.Zoom, Image = ImagePreparation.Thumbnail(sticker), Cursor = Cursors.Hand, Margin = new Padding(6), BackColor = Color.WhiteSmoke };
+                image.Click += (_, _) => { try { Selected = StickerLibrary.Load(file); DialogResult = DialogResult.OK; Close(); } catch (Exception e) when (e is IOException or InvalidDataException or UnauthorizedAccessException) { MessageBox.Show(this, e.Message, Text); } };
+                if (sticker.Info.ContentType == "image/gif")
+                {
+                    void SetPreview(bool animated)
+                    {
+                        if (image.IsDisposed || image.Disposing) return;
+                        try
+                        {
+                            var source = StickerLibrary.Load(file);
+                            Image next = animated ? ImagePreparation.OpenAnimation(source) : ImagePreparation.Thumbnail(source);
+                            var old = image.Image; image.Image = next; var stream = old?.Tag as Stream; old?.Dispose(); stream?.Dispose();
+                        }
+                        catch (Exception e) when (e is IOException or InvalidDataException or ArgumentException or UnauthorizedAccessException or OutOfMemoryException) { }
+                    }
+                    image.MouseEnter += (_, _) => SetPreview(true);
+                    image.MouseLeave += (_, _) => SetPreview(false);
+                }
                 var menu = new ContextMenuStrip(); menu.Items.Add("Удалить из коллекции", null, (_, _) => { try { File.Delete(file); RefreshItems(); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { MessageBox.Show(this, e.Message, Text); } }); image.ContextMenuStrip = menu;
                 image.Disposed += (_, _) => menu.Dispose(); _items.Controls.Add(image);
             }
@@ -49,5 +65,5 @@ internal sealed class StickerPickerForm : Form
         if (_items.Controls.Count == 0) _items.Controls.Add(new Label { Text = "Пока пусто. Создайте свой первый стикер из картинки.", AutoSize = true });
     }
     protected override void Dispose(bool disposing)
-    { if (disposing) foreach (var image in _items.Controls.OfType<PictureBox>()) { image.Image?.Dispose(); image.Image = null; } base.Dispose(disposing); }
+    { if (disposing) foreach (var image in _items.Controls.OfType<PictureBox>()) { var stream = image.Image?.Tag as Stream; image.Image?.Dispose(); image.Image = null; stream?.Dispose(); } base.Dispose(disposing); }
 }

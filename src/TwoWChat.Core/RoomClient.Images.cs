@@ -32,6 +32,7 @@ public sealed partial class RoomClient
     {
         if (!SupportsImages) throw new InvalidOperationException("Программа владельца комнаты не поддерживает картинки. Обновите её до версии 1.2.");
         if (image.Info.ContentType == "image/gif" && !SupportsAnimatedGifs) throw new InvalidOperationException("Для GIF обновите программу владельца комнаты до 1.7.");
+        if (image.Info.IsSticker && image.Info.ContentType == "image/gif" && !SupportsAnimatedStickers) throw new InvalidOperationException("Для GIF-стикеров обновите программу владельца комнаты до 1.11.");
         ImageAttachments.Validate(image); caption = Protocol.CleanText(caption);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(_stop.Token, cancellationToken);
         await _uploadSerial.WaitAsync(stop.Token);

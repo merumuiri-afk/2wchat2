@@ -93,6 +93,7 @@ public sealed record WireMessage(string Type)
     public bool SupportsImages { get; init; }
     public bool SupportsAvatars { get; init; }
     public bool SupportsAnimatedGifs { get; init; }
+    public bool SupportsAnimatedStickers { get; init; }
     public ImageInfo? Image { get; init; }
     public byte[]? Data { get; init; }
     public int Offset { get; init; }

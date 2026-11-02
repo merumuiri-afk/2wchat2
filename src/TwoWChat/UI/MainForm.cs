@@ -104,7 +104,6 @@ public sealed partial class MainForm : Form
         tools.DropDownItems.Add("Мини-окно участников", null, (_, _) => EnterCompact());
         tools.DropDownItems.Add("Мои стикеры…", null, async (_, _) => await OpenStickersAsync());
         tools.DropDownItems.Add("Моя аватарка…", null, async (_, _) => await OpenAvatarAsync());
-        tools.DropDownItems.Add("Предложить название комнаты…", null, async (_, _) => await ProposeRoomNameAsync());
         tools.DropDownItems.Add("Мой IP и подключение…", null, (_, _) => ShowAddresses());
         AddUpdateMenu(tools);
         var help = new ToolStripMenuItem("&Справка");
@@ -122,6 +121,10 @@ public sealed partial class MainForm : Form
         _heading.Text = "  2WChat  /  голос и сообщения"; _heading.Dock = DockStyle.Fill;
         _heading.BackColor = Color.FromArgb(10, 36, 106); _heading.ForeColor = Color.White;
         _heading.Font = new Font("Tahoma", 12, FontStyle.Bold); _heading.TextAlign = ContentAlignment.MiddleLeft; _heading.Margin = new Padding(0, 0, 0, 7);
+        _heading.Cursor = Cursors.Hand;
+        _heading.AccessibleName = "Название комнаты — предложить новое название";
+        _tips.SetToolTip(_heading, "Нажмите, чтобы предложить новое название комнаты");
+        _heading.Click += async (_, _) => await ProposeRoomNameAsync();
         root.Controls.Add(_heading, 0, 0);
         var connect = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 8, RowCount = 2, Padding = new Padding(3), BorderStyle = BorderStyle.Fixed3D };
         foreach (var width in new[] { 60, 140, 85, 175, 60, 80, 80 }) connect.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, width));

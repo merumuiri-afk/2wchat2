@@ -30,6 +30,7 @@ internal static partial class Program
     }
     private static async Task Main(string[] args)
     {
+        if (args.FirstOrDefault() == "--gif-sticker") { CheckGifSticker(); return; }
         if (args.FirstOrDefault() == "--capture-device") { await CheckCaptureDeviceAsync(); return; }
         if (args.FirstOrDefault() == "--probe-server") { await ProbeServerAsync(args[1]); return; }
         if (args.FirstOrDefault() == "--probe-peer") { await ProbePeerAsync(args[1], args[2]); return; }

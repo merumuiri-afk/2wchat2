@@ -139,13 +139,13 @@ public sealed partial class RoomServer : IAsyncDisposable
                         {
                             peer = new Peer(tcp, ssl, name, hello!.MicMuted, hello.Deafened, hello.SupportsImages, hello.SupportsScreenShare);
                             peer.SupportsAvatars = hello.SupportsAvatars;
-                            peer.SupportsAnimatedGifs = hello.SupportsAnimatedGifs;
+                            peer.SupportsAnimatedGifs = hello.SupportsAnimatedGifs; peer.SupportsAnimatedStickers = hello.SupportsAnimatedStickers;
                             _peers.Add(peer.Info.Id, peer);
                             _tokens[peer.Token] = peer;
                             peer.Queue(new WireMessage("welcome")
                             {
                                 Id = peer.Info.Id, Token = peer.Token, Key = Convert.ToBase64String(peer.Key), Room = _room,
-                                Members = _peers.Values.Select(p => p.Info).ToArray(), History = _history.Select(c => CompatibleChat(c, peer.SupportsAnimatedGifs)).ToArray(), SupportsImages = true, SupportsAnimatedGifs = true,
+                                Members = _peers.Values.Select(p => p.Info).ToArray(), History = _history.Select(c => CompatibleChat(c, peer.SupportsAnimatedGifs, peer.SupportsAnimatedStickers)).ToArray(), SupportsImages = true, SupportsAnimatedGifs = true, SupportsAnimatedStickers = true,
                                 SupportsScreenShare = true, SupportsAvatars = true, ScreenKey = Convert.ToBase64String(peer.ScreenKey), Screens = ScreenSnapshot(), Stamp = _screenRevision
                             });
                             if (peer.SupportsAvatars)
@@ -271,7 +271,7 @@ public sealed partial class RoomServer : IAsyncDisposable
                 {
                     lock (_gate) image = _images.Get(id);
                     offset = 0;
-                    message = image == null ? ImageError(id, "Изображение больше не хранится в комнате.") : new WireMessage("image_start") { Id = id, Image = image.Info };
+                    message = image == null ? ImageError(id, "Изображение больше не хранится в комнате.") : new WireMessage("image_start") { Id = id, Image = !peer.SupportsAnimatedStickers && image.Info.ContentType == "image/gif" ? image.Info with { IsSticker = false } : image.Info };
                 }
                 else { await peer.SendSignal.WaitAsync(ct); continue; }
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -353,9 +353,9 @@ public sealed partial class RoomServer : IAsyncDisposable
 
     private void Broadcast(WireMessage message)
     {
-        foreach (var peer in _peers.Values) peer.Queue(message.Chat == null ? message : message with { Chat = CompatibleChat(message.Chat, peer.SupportsAnimatedGifs) });
+        foreach (var peer in _peers.Values) peer.Queue(message.Chat == null ? message : message with { Chat = CompatibleChat(message.Chat, peer.SupportsAnimatedGifs, peer.SupportsAnimatedStickers) });
     }
-    private static ChatEntry CompatibleChat(ChatEntry chat, bool gifs) => !gifs && chat.Image?.ContentType == "image/gif" ? chat with { Image = null, Text = chat.Text + " [GIF: обновите 2WChat до 1.7]" } : chat;
+    private static ChatEntry CompatibleChat(ChatEntry chat, bool gifs, bool stickers) => !gifs && chat.Image?.ContentType == "image/gif" ? chat with { Image = null, Text = chat.Text + " [GIF: обновите 2WChat до 1.7]" } : !stickers && chat.Image is { ContentType: "image/gif", IsSticker: true } ? chat with { Image = chat.Image with { IsSticker = false } } : chat;
 
     private void BroadcastMembers() => Broadcast(new WireMessage("members") { Members = _peers.Values.Select(p => p.Info).ToArray() });
 
@@ -442,7 +442,7 @@ public sealed partial class RoomServer : IAsyncDisposable
     {
         public PeerInfo Info;
         public bool SupportsAvatars;
-        public bool SupportsAnimatedGifs;
+        public bool SupportsAnimatedGifs; public bool SupportsAnimatedStickers;
         public byte[] Avatar = [];
         public readonly RateLimit AvatarRate = new(1, 4);
         public readonly TcpClient Tcp;

@@ -26,6 +26,7 @@ public sealed partial class RoomClient : IAsyncDisposable
     public bool SupportsImages { get; private set; }
     public bool SupportsAvatars { get; private set; }
     public bool SupportsAnimatedGifs { get; private set; }
+    public bool SupportsAnimatedStickers { get; private set; }
     private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, byte[]> _avatars = new();
     public byte[]? GetAvatar(Guid id) => _avatars.GetValueOrDefault(id);
     public Task SetAvatarAsync(byte[] data)
@@ -73,7 +74,7 @@ public sealed partial class RoomClient : IAsyncDisposable
             CertificateRevocationCheckMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck
         }, timeout.Token);
         await Protocol.WriteAsync(_ssl, new WireMessage("hello")
-        { Name = name, Password = password, MicMuted = micMuted, Deafened = deafened, SupportsImages = true, SupportsScreenShare = true, SupportsAvatars = true, SupportsAnimatedGifs = true }, timeout.Token);
+        { Name = name, Password = password, MicMuted = micMuted, Deafened = deafened, SupportsImages = true, SupportsScreenShare = true, SupportsAvatars = true, SupportsAnimatedGifs = true, SupportsAnimatedStickers = true }, timeout.Token);
         var welcome = await Protocol.ReadAsync(_ssl, timeout.Token) ?? throw new IOException("Сервер закрыл соединение.");
         if (welcome.Type == "error") throw new IOException(welcome.Text ?? "Подключение отклонено.");
         if (welcome.Type != "welcome" || welcome.Version != Protocol.Version || welcome.Key == null || welcome.Id == Guid.Empty || welcome.Token == Guid.Empty)
@@ -84,6 +85,7 @@ public sealed partial class RoomClient : IAsyncDisposable
         SupportsImages = welcome.SupportsImages;
         SupportsAvatars = welcome.SupportsAvatars;
         SupportsAnimatedGifs = welcome.SupportsAnimatedGifs;
+        SupportsAnimatedStickers = welcome.SupportsAnimatedStickers;
         InitializeScreenTransport(welcome, remote);
         Volatile.Write(ref _members, welcome.Members ?? []);
         var key = Convert.FromBase64String(welcome.Key);

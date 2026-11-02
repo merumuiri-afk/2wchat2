@@ -7,9 +7,18 @@ namespace TwoWChat.Images;
 public static class StickerLibrary
 {
     public static string Folder => Path.Combine(AppStore.Folder, "stickers");
-    public static string[] Files() => Directory.Exists(Folder) ? Directory.GetFiles(Folder, "*.png").OrderByDescending(File.GetLastWriteTimeUtc).ToArray() : [];
+    public static string[] Files() => Directory.Exists(Folder) ? Directory.GetFiles(Folder).Where(p => Path.GetExtension(p).ToLowerInvariant() is ".png" or ".gif").OrderByDescending(File.GetLastWriteTimeUtc).ToArray() : [];
     public static ImagePayload Prepare(ImagePayload source, bool removeBackground = false)
     {
+        if (source.Info.ContentType == "image/gif")
+        {
+            if (removeBackground) throw new InvalidDataException("Для GIF отключите удаление фона: анимация сохраняется целиком.");
+            var animated = source with { Info = source.Info with { IsSticker = true } };
+            ImageAttachments.Validate(animated);
+            using var preview = ImagePreparation.OpenAnimation(animated);
+            (preview.Tag as Stream)?.Dispose();
+            return animated;
+        }
         using var decoded = ImagePreparation.Decode(source);
         var scale = Math.Min(1d, 320d / Math.Max(decoded.Width, decoded.Height));
         using var bitmap = new Bitmap(Math.Max(1, (int)(decoded.Width * scale)), Math.Max(1, (int)(decoded.Height * scale)), PixelFormat.Format32bppArgb);
@@ -40,7 +49,7 @@ public static class StickerLibrary
         ImageAttachments.Validate(sticker);
         if (!sticker.Info.IsSticker) throw new InvalidDataException("Сначала подготовьте стикер.");
         Directory.CreateDirectory(Folder);
-        var path = Path.Combine(Folder, sticker.Info.Sha256.ToLowerInvariant() + ".png");
+        var path = Path.Combine(Folder, sticker.Info.Sha256.ToLowerInvariant() + (sticker.Info.ContentType == "image/gif" ? ".gif" : ".png"));
         if (File.Exists(path)) return path;
         if (Files().Length >= 100) throw new IOException("В коллекции уже 100 стикеров. Удалите ненужные.");
         File.WriteAllBytes(path, sticker.Data); return path;
@@ -48,7 +57,7 @@ public static class StickerLibrary
     public static ImagePayload Load(string path)
     {
         if (!Path.GetFullPath(path).StartsWith(Path.GetFullPath(Folder) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)) throw new IOException("Неверный путь стикера.");
-        if (new FileInfo(path).Length > 1024 * 1024) throw new InvalidDataException("Стикер слишком большой.");
+        if (new FileInfo(path).Length > Protocol.MaxImageBytes) throw new InvalidDataException("Стикер слишком большой.");
         var payload = ImageAttachments.Create(File.ReadAllBytes(path), "Стикер.png");
         payload = payload with { Info = payload.Info with { IsSticker = true } }; ImageAttachments.Validate(payload); return payload;
     }
