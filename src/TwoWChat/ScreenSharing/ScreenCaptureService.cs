@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace TwoWChat.ScreenSharing;
 
-public sealed record ScreenCaptureOptions(Rectangle Bounds, int FramesPerSecond = 10, int JpegQuality = 60, bool IncludeCursor = true);
+public sealed record ScreenCaptureOptions(Rectangle Bounds, int FramesPerSecond = 10, int JpegQuality = 60, bool IncludeCursor = true, IntPtr WindowHandle = default, uint WindowProcessId = 0);
 
 // Desktop pixels are read only after Start. A supplied factory completely
 // replaces desktop capture, allowing deterministic and private synthetic QA.
@@ -46,7 +46,7 @@ public sealed class ScreenCaptureService : IDisposable, IAsyncDisposable
     {
         try
         {
-            using var desktop = _frameSource == null ? new Bitmap(_options.Bounds.Width, _options.Bounds.Height, PixelFormat.Format24bppRgb) : null;
+            using var desktop = _frameSource == null && _options.WindowHandle == IntPtr.Zero ? new Bitmap(_options.Bounds.Width, _options.Bounds.Height, PixelFormat.Format24bppRgb) : null;
             var interval = TimeSpan.FromSeconds(1d / _options.FramesPerSecond);
             var maxBytes = Math.Min(MaxFrameBytes, TargetBytesPerSecond / _options.FramesPerSecond);
             while (!_stop.IsCancellationRequested)
@@ -56,6 +56,11 @@ public sealed class ScreenCaptureService : IDisposable, IAsyncDisposable
                 if (_frameSource != null)
                 {
                     using var frame = _frameSource();
+                    jpeg = EncodeFrame(frame, _options.JpegQuality, maxBytes);
+                }
+                else if (_options.WindowHandle != IntPtr.Zero)
+                {
+                    using var frame = WindowCapture.Capture(_options.WindowHandle, _options.WindowProcessId);
                     jpeg = EncodeFrame(frame, _options.JpegQuality, maxBytes);
                 }
                 else

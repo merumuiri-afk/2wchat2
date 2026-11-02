@@ -18,6 +18,7 @@ public sealed partial class MainForm
         try
         {
             Directory.CreateDirectory(directory);
+            await RunWindowCaptureSmokeAsync(directory, results);
             var updateTools = MainMenuStrip!.Items.OfType<ToolStripMenuItem>().Single(m => m.Text == "&Сервис");
             var autoUpdate = updateTools.DropDownItems.OfType<ToolStripMenuItem>().Single(m => m.Text == "Проверять обновления при запуске");
             var originalAutoUpdate = _settings.AutoCheckUpdates;

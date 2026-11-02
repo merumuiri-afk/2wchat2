@@ -44,7 +44,7 @@ public sealed partial class MainForm
         _watchScreen.Enabled = ready && !_screenChanging && (_screenViewer != null || (stream != null && !own));
         _screenStatus.Text = stream == null ? "Нет активной трансляции" : own ? "Вы показываете: " + stream.Title : stream.Name + " показывает: " + stream.Title;
         _screenStatus.ForeColor = own ? Color.DarkRed : Color.DarkGreen;
-        _tips.SetToolTip(_shareScreen, client?.Connected == true && !client.SupportsScreenShare ? "Владелец комнаты должен обновиться до версии 1.4." : "Выберите монитор. Показ начинается только после нажатия «Начать».");
+        _tips.SetToolTip(_shareScreen, client?.Connected == true && !client.SupportsScreenShare ? "Владелец комнаты должен обновиться до версии 1.4." : "Выберите монитор или окно. Показ начинается только после нажатия «Начать».");
     }
 
     private async Task ToggleScreenShareAsync()
@@ -72,7 +72,7 @@ public sealed partial class MainForm
         {
             var bounds = selection.Options.Bounds;
             var scale = Math.Min(1d, Math.Min(1280d / bounds.Width, 720d / bounds.Height));
-            await client.StartScreenShareAsync(selection.SelectedTitle, Math.Max(1, (int)(bounds.Width * scale)), Math.Max(1, (int)(bounds.Height * scale)));
+            await client.StartScreenShareAsync(selection.SelectedTitle, selection.Options.WindowHandle != IntPtr.Zero ? 1280 : Math.Max(1, (int)(bounds.Width * scale)), selection.Options.WindowHandle != IntPtr.Zero ? 720 : Math.Max(1, (int)(bounds.Height * scale)));
             if (_client != client || generation != _screenGeneration) { await client.StopScreenShareAsync(); return; }
             var capture = new ScreenCaptureService(selection.Options); _screenCapture = capture;
             capture.FrameCaptured += jpeg => { if (_screenCapture == capture && _client == client) client.SendScreenFrame(jpeg); };
