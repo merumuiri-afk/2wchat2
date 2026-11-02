@@ -20,7 +20,7 @@ if (!$accessToken) {
 }
 $headers = @{ Authorization = ('Bearer ' + $accessToken); 'User-Agent' = '2WChat-release'; Accept = 'application/vnd.github+json' }
 $api = 'https://api.github.com/repos/' + $repository
-$releases = @(Invoke-RestMethod -Uri ($api + '/releases') -Headers $headers)
+$releases = Invoke-RestMethod -Uri ($api + '/releases') -Headers $headers
 $release = $releases | Where-Object { $_.tag_name -eq ('v' + $version) } | Select-Object -First 1
 if ($release -and !$release.draft -and !$InstallerOnly) { throw 'This release is already public; publish a new version instead of replacing its assets' }
 if ($InstallerOnly -and !$release) { throw 'Publish the app release before adding an installer' }
