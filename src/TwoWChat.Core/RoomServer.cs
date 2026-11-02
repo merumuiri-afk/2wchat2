@@ -132,14 +132,18 @@ public sealed partial class RoomServer : IAsyncDisposable
                         else
                         {
                             peer = new Peer(tcp, ssl, name, hello!.MicMuted, hello.Deafened, hello.SupportsImages, hello.SupportsScreenShare);
+                            peer.SupportsAvatars = hello.SupportsAvatars;
                             _peers.Add(peer.Info.Id, peer);
                             _tokens[peer.Token] = peer;
                             peer.Queue(new WireMessage("welcome")
                             {
                                 Id = peer.Info.Id, Token = peer.Token, Key = Convert.ToBase64String(peer.Key), Room = _room,
                                 Members = _peers.Values.Select(p => p.Info).ToArray(), History = _history.ToArray(), SupportsImages = true,
-                                SupportsScreenShare = true, ScreenKey = Convert.ToBase64String(peer.ScreenKey), Screens = ScreenSnapshot(), Stamp = _screenRevision
+                                SupportsScreenShare = true, SupportsAvatars = true, ScreenKey = Convert.ToBase64String(peer.ScreenKey), Screens = ScreenSnapshot(), Stamp = _screenRevision
                             });
+                            if (peer.SupportsAvatars)
+                                foreach (var existing in _peers.Values.Where(p => p.Avatar.Length > 0))
+                                    peer.Queue(new WireMessage("avatar") { Id = existing.Info.Id, Data = existing.Avatar });
                             BroadcastMembers();
                         }
                     }
@@ -163,6 +167,17 @@ public sealed partial class RoomServer : IAsyncDisposable
                         active.LastSeen = Environment.TickCount64;
                         switch (message.Type)
                         {
+                            case "avatar":
+                                if (!active.SupportsAvatars || !active.AvatarRate.Take()) break;
+                                if (message.Data == null || !AvatarData.IsValid(message.Data))
+                                { active.Queue(new WireMessage("notice") { Text = "Некорректная аватарка. Нужен JPEG 96×96 до 12 КиБ." }); break; }
+                                lock (_gate)
+                                {
+                                    active.Avatar = message.Data;
+                                    foreach (var recipient in _peers.Values.Where(p => p.SupportsAvatars))
+                                        recipient.Queue(new WireMessage("avatar") { Id = active.Info.Id, Data = active.Avatar });
+                                }
+                                break;
                             case "ping":
                                 active.Queue(new WireMessage("pong") { Stamp = message.Stamp });
                                 break;
@@ -418,6 +433,9 @@ public sealed partial class RoomServer : IAsyncDisposable
     private sealed class Peer : IDisposable
     {
         public PeerInfo Info;
+        public bool SupportsAvatars;
+        public byte[] Avatar = [];
+        public readonly RateLimit AvatarRate = new(1, 4);
         public readonly TcpClient Tcp;
         public readonly SslStream Stream;
         public readonly Guid Token = Guid.NewGuid();

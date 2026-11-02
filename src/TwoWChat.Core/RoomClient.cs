@@ -24,6 +24,14 @@ public sealed partial class RoomClient : IAsyncDisposable
     public string Room { get; private set; } = "";
     public ChatEntry[] History { get; private set; } = [];
     public bool SupportsImages { get; private set; }
+    public bool SupportsAvatars { get; private set; }
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<Guid, byte[]> _avatars = new();
+    public byte[]? GetAvatar(Guid id) => _avatars.GetValueOrDefault(id);
+    public Task SetAvatarAsync(byte[] data)
+    {
+        if (!AvatarData.IsValid(data)) throw new InvalidDataException("Некорректная аватарка.");
+        return SupportsAvatars ? SendAsync(new WireMessage("avatar") { Data = data }) : Task.CompletedTask;
+    }
     public PeerInfo[] Members => Volatile.Read(ref _members);
     public bool Connected => Volatile.Read(ref _ready) == 1 && Volatile.Read(ref _closed) == 0;
     public bool UdpReady => Interlocked.Read(ref _lastUdp) != 0 && Environment.TickCount64 - Interlocked.Read(ref _lastUdp) < 7000;
@@ -64,7 +72,7 @@ public sealed partial class RoomClient : IAsyncDisposable
             CertificateRevocationCheckMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck
         }, timeout.Token);
         await Protocol.WriteAsync(_ssl, new WireMessage("hello")
-        { Name = name, Password = password, MicMuted = micMuted, Deafened = deafened, SupportsImages = true, SupportsScreenShare = true }, timeout.Token);
+        { Name = name, Password = password, MicMuted = micMuted, Deafened = deafened, SupportsImages = true, SupportsScreenShare = true, SupportsAvatars = true }, timeout.Token);
         var welcome = await Protocol.ReadAsync(_ssl, timeout.Token) ?? throw new IOException("Сервер закрыл соединение.");
         if (welcome.Type == "error") throw new IOException(welcome.Text ?? "Подключение отклонено.");
         if (welcome.Type != "welcome" || welcome.Version != Protocol.Version || welcome.Key == null || welcome.Id == Guid.Empty || welcome.Token == Guid.Empty)
@@ -73,6 +81,7 @@ public sealed partial class RoomClient : IAsyncDisposable
         Room = welcome.Room ?? "Общая комната";
         History = welcome.History ?? [];
         SupportsImages = welcome.SupportsImages;
+        SupportsAvatars = welcome.SupportsAvatars;
         InitializeScreenTransport(welcome, remote);
         Volatile.Write(ref _members, welcome.Members ?? []);
         var key = Convert.FromBase64String(welcome.Key);
@@ -113,7 +122,17 @@ public sealed partial class RoomClient : IAsyncDisposable
                 if (message == null) break;
                 if (ReadImageMessage(message)) continue;
                 if (message.Type == "screens" && !UpdateScreens(message.Screens ?? [], message.Stamp)) continue;
-                if (message.Type == "members") Volatile.Write(ref _members, message.Members ?? []);
+                if (message.Type == "members")
+                {
+                    Volatile.Write(ref _members, message.Members ?? []);
+                    foreach (var id in _avatars.Keys) if (!_members.Any(m => m.Id == id)) _avatars.TryRemove(id, out _);
+                }
+                if (message.Type == "avatar")
+                {
+                    if (!SupportsAvatars || message.Data == null || !AvatarData.IsValid(message.Data) || !Members.Any(m => m.Id == message.Id)) continue;
+                    if (message.Data.Length == 0) _avatars.TryRemove(message.Id, out _);
+                    else _avatars[message.Id] = message.Data;
+                }
                 if (message.Type == "pong")
                 {
                     _lastPong = Environment.TickCount64;

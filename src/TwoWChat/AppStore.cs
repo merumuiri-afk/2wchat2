@@ -26,6 +26,7 @@ public sealed class AppSettings
     public bool MessageNotificationSound { get; set; } = true;
     public int? NotificationVolume { get; set; }
     public bool AutoCheckUpdates { get; set; } = true;
+    public byte[]? Avatar { get; set; }
     public DateTimeOffset? LastUpdateCheckUtc { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
     public int EffectiveNotificationVolume => Math.Clamp(NotificationVolume ?? OutputVolume, 0, 150);
@@ -33,6 +34,7 @@ public sealed class AppSettings
 
     public void Normalize()
     {
+        if (Avatar != null && !AvatarData.IsValid(Avatar)) Avatar = null;
         Name = Protocol.CleanName(Name); if (Name.Length == 0) Name = "Гость";
         Host ??= "";
         RoomName = Protocol.CleanName(RoomName, 40);

@@ -66,6 +66,7 @@ public sealed partial class MainForm
             item.SubItems.Add(peer.Deafened ? "Без звука" : peer.MicMuted ? "Микр. выкл." : "В сети"); _people.Items.Add(item);
         }
         _people.EndUpdate();
+        RefreshAvatarImages();
         _audio?.Mixer.SyncMembers(members.Select(p => p.Id));
         _heading.Text = $"  2WChat  /  {_client.Room}  [{members.Length}/{Protocol.MaxPeople}]";
         foreach (var peer in members.Where(p => !previous.ContainsKey(p.Id) && p.Id != _client.Id)) AppendNotice(peer.Name + " в комнате.");

@@ -136,6 +136,7 @@ internal static partial class Program
         Check(!notification.TryPlay(-1, .2f) && notification.PlayCount == 1, "Message bursts do not overlap or restart a playing notification clip");
         notification.Stop();
         Check(!notification.IsPlaying && !notification.TryPlay(-1, 0), "Notification playback stops immediately and zero volume remains silent");
-        Check(errors.IsEmpty, "Voice and notification playback coexist without audio errors");
+        Notes.AddRange(errors);
+        Check(errors.IsEmpty, "Voice and notification playback coexist without audio errors: " + string.Join("; ", errors));
     }
 }

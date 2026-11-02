@@ -13,6 +13,12 @@ public sealed class ChatView : UserControl
     private ChatRow? _contextRow;
     private bool _layingOut;
     private bool _followLatest = true;
+    private Func<Guid, byte[]?> _avatarResolver = _ => null;
+    public void RefreshAvatars(Func<Guid, byte[]?> resolver)
+    {
+        _avatarResolver = resolver;
+        foreach (var row in _rows) if (row.Entry is { } entry) row.SetAvatar(AvatarPreparation.Render(resolver(entry.Sender), entry.Name));
+    }
     public event Action<ImagePayload>? ImageOpenRequested;
     public event Action<ImageInfo>? ImageRequested;
     public event Action<string>? Error;
@@ -43,6 +49,7 @@ public sealed class ChatView : UserControl
     public void AddMessage(ChatEntry entry, bool own)
     {
         var row = new ChatRow(entry, null, own, Font, _menu);
+        row.SetAvatar(AvatarPreparation.Render(_avatarResolver(entry.Sender), entry.Name));
         row.OpenRequested += image => ImageOpenRequested?.Invoke(image);
         row.DownloadRequested += info => ImageRequested?.Invoke(info);
         Add(row);
@@ -110,6 +117,8 @@ public sealed class ChatView : UserControl
         private readonly Label _header = new();
         private readonly TextBox _body = new();
         private readonly PictureBox _picture = new();
+        private readonly PictureBox _avatar = new() { SizeMode = PictureBoxSizeMode.Zoom };
+        public void SetAvatar(Bitmap image) { var old = _avatar.Image; _avatar.Image = image; old?.Dispose(); }
         private readonly Label _placeholder = new();
         private readonly LinkLabel _imageLink = new();
         private readonly Font _headingFont;
@@ -136,6 +145,7 @@ public sealed class ChatView : UserControl
             _body.BackColor = Color.White; _body.BorderStyle = BorderStyle.None; _body.WordWrap = true;
             _body.ForeColor = entry == null ? Color.DimGray : Color.Black; _body.TabStop = false;
             Controls.Add(_header); Controls.Add(_body);
+            if (entry != null) Controls.Add(_avatar);
             if (entry?.Image is { } image)
             {
                 _picture.SizeMode = PictureBoxSizeMode.Zoom; _picture.BorderStyle = BorderStyle.FixedSingle; _picture.Cursor = Cursors.Hand;
@@ -153,7 +163,7 @@ public sealed class ChatView : UserControl
         {
             var width = Math.Max(100, Width - 8); var top = 0;
             _header.Visible = Entry != null;
-            if (Entry != null) { _header.SetBounds(0, top, width, 20); top += 21; }
+            if (Entry != null) { _avatar.SetBounds(0, top, 32, 32); _header.SetBounds(38, top + 6, Math.Max(30, width - 38), 23); top += 35; }
             if (_showBody)
             {
                 var measured = TextRenderer.MeasureText(_body.Text, Font, new Size(width - 4, int.MaxValue), TextFormatFlags.WordBreak | TextFormatFlags.TextBoxControl);
@@ -187,7 +197,7 @@ public sealed class ChatView : UserControl
         }
         protected override void Dispose(bool disposing)
         {
-            if (disposing) { var bitmap = _picture.Image; _picture.Image = null; bitmap?.Dispose(); _headingFont.Dispose(); Payload = null; }
+            if (disposing) { _avatar.Image?.Dispose(); _avatar.Image = null; var bitmap = _picture.Image; _picture.Image = null; bitmap?.Dispose(); _headingFont.Dispose(); Payload = null; }
             base.Dispose(disposing);
         }
     }

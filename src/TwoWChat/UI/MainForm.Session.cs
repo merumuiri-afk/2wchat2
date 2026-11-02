@@ -63,6 +63,7 @@ public sealed partial class MainForm
             foreach (var chat in _pendingChats.Where(c => !historyIds.Contains(c.Id))) AppendChat(chat);
             _pendingChats.Clear(); _historyReady = true;
             RefreshMembers(); StartAudio(); SaveSettings();
+            if (_settings.Avatar is { Length: > 0 }) await client.SetAvatarAsync(_settings.Avatar);
         }
         catch (Exception e) when (e is IOException or SocketException or AuthenticationException or OperationCanceledException or UnauthorizedAccessException or System.Security.Cryptography.CryptographicException or InvalidOperationException)
         {
@@ -129,6 +130,7 @@ public sealed partial class MainForm
             if (server != null) await server.DisposeAsync();
             _identity?.Dispose(); _identity = null;
             _people.Items.Clear(); _localMutes.Clear(); _userVolumes.Clear();
+            RefreshAvatarImages();
             _heading.Text = "  2WChat  /  голос и сообщения";
             _roomLabel.Text = " Общий чат";
             Text = "2WChat — голос и сообщения";
@@ -188,6 +190,7 @@ public sealed partial class MainForm
                 }
                 break;
             case "members": RefreshMembers(); break;
+            case "avatar": RefreshAvatarImages(); break;
             case "notice": AppendNotice(message.Text ?? ""); break;
         }
     }

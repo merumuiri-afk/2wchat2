@@ -80,7 +80,7 @@ public sealed partial class MainForm : Form
         _deafen.CheckedChanged += async (_, _) => await ChangeStateAsync();
         _audioSettings.Click += (_, _) => OpenSettings();
         FormClosing += OnClosing;
-        FormClosed += (_, _) => { _updateStop.Cancel(); _notifications.Dispose(); _timer.Dispose(); _tips.Dispose(); };
+        FormClosed += (_, _) => { _updateStop.Cancel(); _notifications.Dispose(); _timer.Dispose(); _tips.Dispose(); _avatarIcons.Dispose(); };
         Shown += async (_, _) => { if (_smokeDirectory != null) await RunUiSmokeAsync(_smokeDirectory); else await CheckUpdatesAsync(false); };
         SetConnectedUi(false);
         AppendNotice("Добро пожаловать в 2WChat. Создайте комнату или введите IP её владельца.");
@@ -97,6 +97,7 @@ public sealed partial class MainForm : Form
         file.DropDownItems.Add("Выход", null, (_, _) => Close());
         var tools = new ToolStripMenuItem("&Сервис");
         tools.DropDownItems.Add("Настройки звука…", null, (_, _) => OpenSettings());
+        tools.DropDownItems.Add("Моя аватарка…", null, async (_, _) => await OpenAvatarAsync());
         tools.DropDownItems.Add("Мой IP и подключение…", null, (_, _) => ShowAddresses());
         AddUpdateMenu(tools);
         var help = new ToolStripMenuItem("&Справка");
@@ -140,6 +141,7 @@ public sealed partial class MainForm : Form
         var participants = new Panel { Dock = DockStyle.Fill, BorderStyle = BorderStyle.Fixed3D };
         var peopleTitle = new Label { Text = " Участники", Dock = DockStyle.Top, Height = 24, TextAlign = ContentAlignment.MiddleLeft };
         _people.Dock = DockStyle.Fill; _people.View = View.Details; _people.FullRowSelect = true; _people.HideSelection = false; _people.MultiSelect = false;
+        _people.SmallImageList = _avatarIcons;
         _people.Columns.Add("Имя", 123); _people.Columns.Add("Статус", 105); _people.HeaderStyle = ColumnHeaderStyle.Nonclickable;
         _people.ContextMenuStrip = BuildPeopleMenu();
         participants.Controls.Add(_people); participants.Controls.Add(peopleTitle); split.Panel1.Controls.Add(participants);

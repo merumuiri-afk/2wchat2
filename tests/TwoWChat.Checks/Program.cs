@@ -41,6 +41,7 @@ internal static partial class Program
             CheckCipher(); await CheckFramingAsync(); CheckAudioAlgorithms();
             CheckNotificationAsset(); CheckSettings(); await CheckRoomAsync();
             await CheckUpdatesAsync();
+            await CheckAvatarsAsync();
             await CheckImagesAsync();
             await CheckScreenSharingAsync();
             await CheckScreenCaptureAsync();

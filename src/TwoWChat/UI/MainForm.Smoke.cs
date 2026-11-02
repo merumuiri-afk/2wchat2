@@ -44,6 +44,23 @@ public sealed partial class MainForm
             await bot.ConnectAsync("127.0.0.1", _server.Port, "Участник", "test-only", false, false, value => value == pin);
             await Task.Delay(300);
             if (_people.Items.Count != 2) throw new IOException("UI participant list did not update");
+            using (var avatarBitmap = new Bitmap(180, 100))
+            {
+                using (var g = Graphics.FromImage(avatarBitmap)) { g.Clear(Color.Gold); g.FillEllipse(Brushes.Navy, 45, 5, 90, 90); }
+                var avatar = AvatarPreparation.FromImage(avatarBitmap);
+                _settings.Avatar = avatar; SaveSettings();
+                await _client.SetAvatarAsync(avatar); await bot.SetAvatarAsync(avatar);
+                var waitAvatar = System.Diagnostics.Stopwatch.StartNew();
+                while ((_client.GetAvatar(bot.Id) == null || bot.GetAvatar(_client.Id) == null) && waitAvatar.ElapsedMilliseconds < 5000) await Task.Delay(30);
+                await Task.Delay(100);
+                if (_client.GetAvatar(bot.Id) == null || _avatarIcons.Images.Count != 2 || AppStore.Load().Avatar?.SequenceEqual(avatar) != true) throw new IOException("UI avatar transfer, icons or persistence failed");
+                results.Add("Local and remote avatars travel over TLS, persist in profile and populate participant icons");
+                using var avatarDialog = new AvatarForm(avatar, "Участник"); avatarDialog.Show(this); await Task.Delay(100);
+                using (var bitmap = new Bitmap(avatarDialog.Width, avatarDialog.Height)) { avatarDialog.DrawToBitmap(bitmap, new Rectangle(Point.Empty, avatarDialog.Size)); bitmap.Save(Path.Combine(directory, "avatar-settings.png")); }
+                DescendantControls(avatarDialog).OfType<Button>().Single(b => b.Text == "Убрать аватарку").PerformClick();
+                if (avatarDialog.Avatar != null) throw new IOException("Avatar removal control failed");
+                avatarDialog.Close(); results.Add("Avatar settings render preview and allow explicit removal without changing the saved profile on cancel");
+            }
             results.Add("Participant list updates for a second TLS client");
             _message.Text = "Привет! Это проверка текстового чата."; await SendChatAsync();
             await Task.Delay(100);
@@ -174,6 +191,9 @@ public sealed partial class MainForm
             results.Add("Disconnect releases the session and resets the UI");
             await ConnectRoomAsync(true, true);
             if (_client?.Connected != true) throw new IOException("Same-port rehost failed");
+            await Task.Delay(150);
+            if (_client.GetAvatar(_client.Id)?.SequenceEqual(_settings.Avatar ?? []) != true) throw new IOException("Saved avatar did not upload on rejoin");
+            results.Add("Saved profile avatar is automatically uploaded again after leaving and recreating a room");
             results.Add("Room can be created again on the same port without restarting");
             await StopSessionAsync();
         }
