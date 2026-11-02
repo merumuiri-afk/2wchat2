@@ -20,6 +20,7 @@ public sealed partial class MainForm
     {
         if (_audio != null) _audio.TalkHeld = (GetAsyncKeyState(_settings.TalkKey) & 0x8000) != 0;
         if (++_ticks % 8 != 0) return;
+        UpdateCompact();
         var client = _client;
         if (client?.Connected != true) return;
         _inputMeter.Value = Math.Clamp((int)((_audio?.InputLevel ?? 0) * 300), 0, 100);

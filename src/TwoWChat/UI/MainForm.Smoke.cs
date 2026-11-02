@@ -180,6 +180,7 @@ public sealed partial class MainForm
                 results.Add("Received image bytes can be saved and reopened with the original dimensions");
             }
             await RunScreenUiSmokeAsync(directory, results, bot);
+            await RunCompactUiSmokeAsync(directory, results, bot);
             var gifData = Convert.FromHexString("47494638396101000100800000000000FFFFFF21F904000A0000002C000000000100010000020244010021F904000A0000002C00000000010001000002024C01003B");
             await bot.SendImageAsync(ImageAttachments.Create(gifData, "animation.gif"), "GIF animation");
             await Task.Delay(500);

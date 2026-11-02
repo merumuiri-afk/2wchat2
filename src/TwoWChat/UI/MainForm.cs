@@ -56,6 +56,7 @@ public sealed partial class MainForm : Form
         _notifications = new MessageNotifications(this, Icon);
         _notifications.UnreadChanged += _ => UpdateWindowCaption();
         _notifications.Error += text => Post(() => AppendNotice(text));
+        _notifications.OpenRequested += RestoreFromCompact;
         Activated += (_, _) => { if (WindowState != FormWindowState.Minimized) _notifications.ClearUnread(); };
         _name.Text = settings.Name; _host.Text = settings.Host; _port.Value = settings.Port; _room.Text = settings.RoomName;
         _mute.Checked = settings.MicMuted; _deafen.Checked = settings.Deafened;
@@ -99,6 +100,7 @@ public sealed partial class MainForm : Form
         file.DropDownItems.Add("Выход", null, (_, _) => Close());
         var tools = new ToolStripMenuItem("&Сервис");
         tools.DropDownItems.Add("Настройки звука…", null, (_, _) => OpenSettings());
+        tools.DropDownItems.Add("Мини-окно участников", null, (_, _) => EnterCompact());
         tools.DropDownItems.Add("Моя аватарка…", null, async (_, _) => await OpenAvatarAsync());
         tools.DropDownItems.Add("Предложить название комнаты…", null, async (_, _) => await ProposeRoomNameAsync());
         tools.DropDownItems.Add("Мой IP и подключение…", null, (_, _) => ShowAddresses());

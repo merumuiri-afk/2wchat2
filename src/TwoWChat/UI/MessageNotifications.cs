@@ -15,6 +15,8 @@ internal sealed class MessageNotifications : IDisposable
     private bool _connected, _disposed;
     private string _outputDevice = "";
     private int _outputVolume = -1;
+    private MessagePopupForm? _popup;
+    public event Action? OpenRequested;
     public int UnreadCount { get; private set; }
     public int ReceivedCount { get; private set; }
     public int SoundPlayCount => _sound.PlayCount;
@@ -45,9 +47,10 @@ internal sealed class MessageNotifications : IDisposable
         if (!connected || !settings.MessageNotifications || !settings.MessageNotificationSound || settings.Deafened || settings.EffectiveNotificationVolume == 0)
             _sound.Stop();
         if (!connected || !settings.MessageNotifications) ClearUnread();
+        if (!connected || !settings.MessageNotifications) { _popup?.Close(); _popup = null; }
     }
 
-    public bool Notify(ChatEntry chat, Guid self, bool history = false)
+    public bool Notify(ChatEntry chat, Guid self, bool history = false, byte[]? avatar = null)
     {
         if (_disposed || !_connected || !_settings.MessageNotifications || history || chat.Sender == self) return false;
         ReceivedCount++;
@@ -56,16 +59,14 @@ internal sealed class MessageNotifications : IDisposable
             var output = AudioEngine.OutputDevices().FirstOrDefault(d => d.Name == _settings.OutputDevice)?.Number ?? -1;
             _sound.TryPlay(output, _settings.EffectiveNotificationVolume / 100f);
         }
-        if (_window.WindowState == FormWindowState.Minimized || !ApplicationHasFocus())
+        if (!_window.Visible || _window.WindowState == FormWindowState.Minimized || !ApplicationHasFocus())
         {
             UnreadCount = Math.Min(9999, UnreadCount + 1);
             UnreadChanged?.Invoke(UnreadCount);
             _tray.Text = $"2WChat — непрочитанных: {UnreadCount}";
-            // A classic Windows tray balloon fits the existing desktop UI.
-            var title = Protocol.CleanName(chat.Name, 40) + " — 2WChat";
-            var text = chat.Text.Replace('\r', ' ').Replace('\n', ' ');
-            if (text.Length > 180) text = text[..180] + "…";
-            _tray.ShowBalloonTip(4000, title, text, ToolTipIcon.Info);
+            // A bounded, non-activating popup can display the sender's avatar.
+            _popup?.Close();
+            _popup = new MessagePopupForm(chat, avatar, OpenChat); _popup.Show();
             Flash(14);
         }
         return true;
@@ -88,6 +89,7 @@ internal sealed class MessageNotifications : IDisposable
     private void OpenChat()
     {
         if (_disposed || _window.IsDisposed) return;
+        OpenRequested?.Invoke();
         _window.Show();
         if (_window.WindowState == FormWindowState.Minimized) _window.WindowState = FormWindowState.Normal;
         _window.Activate(); ClearUnread();
@@ -102,6 +104,7 @@ internal sealed class MessageNotifications : IDisposable
     {
         if (_disposed) return;
         ClearUnread(); _disposed = true;
+        _popup?.Close(); _popup = null;
         _sound.Dispose(); _tray.Visible = false;
         _tray.ContextMenuStrip?.Dispose(); _tray.Dispose();
     }

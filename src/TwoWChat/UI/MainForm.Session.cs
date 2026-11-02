@@ -191,7 +191,7 @@ public sealed partial class MainForm
                 else
                 {
                     AppendChat(message.Chat);
-                    _notifications.Notify(message.Chat, _client?.Id ?? Guid.Empty);
+                    _notifications.Notify(message.Chat, _client?.Id ?? Guid.Empty, avatar: _client?.GetAvatar(message.Chat.Sender));
                 }
                 break;
             case "members": RefreshMembers(); break;
@@ -217,6 +217,7 @@ public sealed partial class MainForm
     private async void OnClosing(object? sender, FormClosingEventArgs e)
     {
         if (_closing) return;
+        RestoreFromCompact();
         e.Cancel = true;
         _timer.Stop(); _connectStop?.Cancel();
         if (_busy) { _closeRequested = true; return; }
