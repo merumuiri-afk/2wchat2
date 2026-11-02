@@ -13,7 +13,7 @@ $env:DOTNET_NOLOGO = '1'
 & $dotnet build 'tests\TwoWChat.Checks\TwoWChat.Checks.csproj' -c Release --nologo
 if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 if (!$SkipChecks) {
-    $checkArgs = @('tests\TwoWChat.Checks\bin\Release\net10.0-windows\TwoWChat.Checks.dll', 'artifacts\checks')
+    $checkArgs = @('tests\TwoWChat.Checks\bin\Release\net10.0-windows10.0.19041.0\TwoWChat.Checks.dll', 'artifacts\checks')
     if ($AudioChecks) { $checkArgs += '--audio' }
     & $dotnet @checkArgs
     if ($LASTEXITCODE -ne 0) { throw 'Checks failed' }
@@ -28,7 +28,7 @@ Copy-Item -LiteralPath (Join-Path $root 'packaging\Allow-Firewall.ps1') -Destina
 Copy-Item -LiteralPath (Join-Path $root 'packaging\Allow-Firewall.cmd') -Destination $output -Force
 $licenseOutput = Join-Path $output 'licenses'
 New-Item -ItemType Directory -Force -Path $licenseOutput | Out-Null
-$runtimeConfig = Get-Content -Raw -LiteralPath (Join-Path $root 'src\TwoWChat\bin\Release\net10.0-windows\win-x64\2WChat.runtimeconfig.json') | ConvertFrom-Json
+$runtimeConfig = Get-Content -Raw -LiteralPath (Join-Path $root 'src\TwoWChat\bin\Release\net10.0-windows10.0.19041.0\win-x64\2WChat.runtimeconfig.json') | ConvertFrom-Json
 foreach ($framework in $runtimeConfig.runtimeOptions.includedFrameworks) {
     $package = $framework.name.ToLowerInvariant() + '.runtime.win-x64'
     $packagePath = Join-Path $env:NUGET_PACKAGES ($package + '\' + $framework.version)

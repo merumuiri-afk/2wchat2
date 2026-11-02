@@ -18,6 +18,7 @@ public sealed class ScreenCaptureService : IDisposable, IAsyncDisposable
     public const int TargetBytesPerSecond = 500000;
     private readonly ScreenCaptureOptions _options;
     private readonly Func<Bitmap>? _frameSource;
+    private readonly Func<long>? _sendDelay;
     private readonly CancellationTokenSource _stop = new();
     private Task? _loop;
     private bool _disposed;
@@ -27,14 +28,14 @@ public sealed class ScreenCaptureService : IDisposable, IAsyncDisposable
     public long BytesEncoded { get; private set; }
     public bool Running => _loop is { IsCompleted: false } && !_stop.IsCancellationRequested;
 
-    public ScreenCaptureService(ScreenCaptureOptions options, Func<Bitmap>? frameSource = null)
+    public ScreenCaptureService(ScreenCaptureOptions options, Func<Bitmap>? frameSource = null, Func<long>? sendDelay = null)
     {
         if (options.Bounds.Width <= 0 || options.Bounds.Height <= 0 || options.Bounds.Width > 16384 || options.Bounds.Height > 16384 ||
             (long)options.Bounds.Width * options.Bounds.Height > 40000000)
             throw new ArgumentException("Размер выбранного экрана не поддерживается.", nameof(options));
         if (options.FramesPerSecond is not (5 or 10)) throw new ArgumentOutOfRangeException(nameof(options));
         if (options.JpegQuality is < 30 or > 85) throw new ArgumentOutOfRangeException(nameof(options));
-        _options = options; _frameSource = frameSource;
+        _options = options; _frameSource = frameSource; _sendDelay = sendDelay;
     }
     public void Start()
     {
@@ -46,27 +47,26 @@ public sealed class ScreenCaptureService : IDisposable, IAsyncDisposable
     {
         try
         {
-            using var desktop = _frameSource == null && _options.WindowHandle == IntPtr.Zero ? new Bitmap(_options.Bounds.Width, _options.Bounds.Height, PixelFormat.Format24bppRgb) : null;
+            using var window = _frameSource != null ? null : _options.WindowHandle != IntPtr.Zero ? new GraphicsWindowCapture(_options.WindowHandle) : new GraphicsWindowCapture(WindowCapture.MonitorHandle(_options.Bounds), true, _options.IncludeCursor);
             var interval = TimeSpan.FromSeconds(1d / _options.FramesPerSecond);
-            var maxBytes = Math.Min(MaxFrameBytes, TargetBytesPerSecond / _options.FramesPerSecond);
+            var normalBudget = Math.Min(MaxFrameBytes, TargetBytesPerSecond / _options.FramesPerSecond);
+            var maxBytes = normalBudget;
             while (!_stop.IsCancellationRequested)
             {
                 var watch = Stopwatch.StartNew();
+                var delay = _sendDelay?.Invoke() ?? 0;
+                maxBytes = delay > interval.TotalMilliseconds ? Math.Max(12000, (int)(maxBytes * .8)) : Math.Min(normalBudget, maxBytes + 500);
                 byte[] jpeg;
                 if (_frameSource != null)
                 {
                     using var frame = _frameSource();
                     jpeg = EncodeFrame(frame, _options.JpegQuality, maxBytes);
                 }
-                else if (_options.WindowHandle != IntPtr.Zero)
-                {
-                    using var frame = WindowCapture.Capture(_options.WindowHandle, _options.WindowProcessId);
-                    jpeg = EncodeFrame(frame, _options.JpegQuality, maxBytes);
-                }
                 else
                 {
-                    CopyDesktop(desktop!, _options.Bounds, _options.IncludeCursor);
-                    jpeg = EncodeFrame(desktop!, _options.JpegQuality, maxBytes);
+                    if (_options.WindowHandle != IntPtr.Zero) WindowCapture.Validate(_options.WindowHandle, _options.WindowProcessId);
+                    using var frame = await window!.ReadAsync(_stop.Token);
+                    jpeg = EncodeFrame(frame, _options.JpegQuality, maxBytes);
                 }
                 _stop.Token.ThrowIfCancellationRequested();
                 FramesCaptured++; BytesEncoded += jpeg.Length;

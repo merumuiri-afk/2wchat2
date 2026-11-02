@@ -74,7 +74,7 @@ public sealed partial class MainForm
             var scale = Math.Min(1d, Math.Min(1280d / bounds.Width, 720d / bounds.Height));
             await client.StartScreenShareAsync(selection.SelectedTitle, selection.Options.WindowHandle != IntPtr.Zero ? 1280 : Math.Max(1, (int)(bounds.Width * scale)), selection.Options.WindowHandle != IntPtr.Zero ? 720 : Math.Max(1, (int)(bounds.Height * scale)));
             if (_client != client || generation != _screenGeneration) { await client.StopScreenShareAsync(); return; }
-            var capture = new ScreenCaptureService(selection.Options); _screenCapture = capture;
+            var capture = new ScreenCaptureService(selection.Options, sendDelay: () => client.ScreenSendMilliseconds); _screenCapture = capture;
             capture.FrameCaptured += jpeg => { if (_screenCapture == capture && _client == client) client.SendScreenFrame(jpeg); };
             capture.Error += error => Post(async () =>
             {

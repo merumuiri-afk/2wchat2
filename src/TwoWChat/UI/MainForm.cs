@@ -85,7 +85,7 @@ public sealed partial class MainForm : Form
         _audioSettings.Click += (_, _) => OpenSettings();
         FormClosing += OnClosing;
         FormClosed += (_, _) => { _updateStop.Cancel(); _notifications.Dispose(); _timer.Dispose(); _tips.Dispose(); _avatarIcons.Dispose(); };
-        Shown += async (_, _) => { if (_smokeDirectory != null) await RunUiSmokeAsync(_smokeDirectory); else await CheckUpdatesAsync(false); };
+        Shown += async (_, _) => { if (_smokeDirectory != null && Environment.GetCommandLineArgs().Contains("--window-smoke")) { try { await RunWindowCaptureSmokeAsync(_smokeDirectory, []); File.WriteAllText(Path.Combine(_smokeDirectory, "window-only.txt"), "PASS"); } catch (Exception e) { File.WriteAllText(Path.Combine(_smokeDirectory, "window-only.txt"), e.ToString()); Environment.ExitCode = 1; } Close(); } else if (_smokeDirectory != null) await RunUiSmokeAsync(_smokeDirectory); else await CheckUpdatesAsync(false); };
         SetConnectedUi(false);
         AppendNotice("Добро пожаловать в 2WChat. Создайте комнату или введите IP её владельца.");
         AppendNotice("Через Radmin VPN: подключитесь к одной VPN-сети и используйте VPN-IP владельца комнаты.");

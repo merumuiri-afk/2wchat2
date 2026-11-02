@@ -63,3 +63,9 @@ MIT License. Runtime licenses and their third-party notices are included
 in the licenses subfolder of the portable distribution.
 https://github.com/dotnet/runtime
 https://github.com/dotnet/winforms
+
+Windows SDK for .NET targeting pack 10.0.19041.57
+Microsoft.Windows.SDK.NET.dll and WinRT.Runtime.dll
+Copyright Microsoft Corporation. All rights reserved.
+Package license: https://aka.ms/WinSDKLicenseURL
+Project: https://github.com/microsoft/CsWinRT

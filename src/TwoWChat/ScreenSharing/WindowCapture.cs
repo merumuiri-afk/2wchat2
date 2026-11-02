@@ -7,6 +7,8 @@ public sealed record WindowChoice(IntPtr Handle, uint ProcessId, Rectangle Bound
 
 public static class WindowCapture
 {
+    public static IntPtr MonitorHandle(Rectangle bounds) => MonitorFromPoint(new Point(bounds.X + 1, bounds.Y + 1), 2);
+    [DllImport("user32.dll")] private static extern IntPtr MonitorFromPoint(Point point, uint flags);
     public static WindowChoice[] List()
     {
         var windows = new List<WindowChoice>();
@@ -24,11 +26,8 @@ public static class WindowCapture
     }
     public static Bitmap Capture(IntPtr handle, uint processId)
     {
-        GetWindowThreadProcessId(handle, out var current);
-        if (current != processId || !IsWindow(handle) || IsIconic(handle) || !IsWindowVisible(handle) || !GetWindowRect(handle, out var rect))
-            throw new IOException("Выбранное окно закрыто, скрыто или свёрнуто. Выберите окно заново.");
-        var width = rect.Right - rect.Left; var height = rect.Bottom - rect.Top;
-        if (width <= 0 || height <= 0 || width > 16384 || height > 16384 || (long)width * height > 40000000) throw new IOException("Размер окна не поддерживается.");
+        var bounds = Validate(handle, processId);
+        var width = bounds.Width; var height = bounds.Height;
         var bitmap = new Bitmap(width, height);
         try
         {
@@ -36,14 +35,21 @@ public static class WindowCapture
             var hdc = graphics.GetHdc();
             try
             {
-                // Render only the selected window, with a timeout. Never substitute desktop pixels.
-                if (SendMessageTimeout(handle, 0x0317, hdc, new IntPtr(0x1e), 2 | 0x20, 500, out _) == IntPtr.Zero)
-                    throw new IOException("Окно не отвечает на захват. Попробуйте другое приложение.");
+                if (SendMessageTimeout(handle, 0x0317, hdc, new IntPtr(0x1e), 2 | 0x20, 500, out _) == IntPtr.Zero) throw new IOException("Окно не отвечает на захват.");
             }
             finally { graphics.ReleaseHdc(hdc); }
             return bitmap;
         }
         catch { bitmap.Dispose(); throw; }
+    }
+    public static Rectangle Validate(IntPtr handle, uint processId)
+    {
+        GetWindowThreadProcessId(handle, out var current);
+        if (current != processId || !IsWindow(handle) || IsIconic(handle) || !IsWindowVisible(handle) || !GetWindowRect(handle, out var rect))
+            throw new IOException("Выбранное окно закрыто, скрыто или свёрнуто. Выберите окно заново.");
+        var width = rect.Right - rect.Left; var height = rect.Bottom - rect.Top;
+        if (width <= 0 || height <= 0 || width > 16384 || height > 16384 || (long)width * height > 40000000) throw new IOException("Размер окна не поддерживается.");
+        return new Rectangle(rect.Left, rect.Top, width, height);
     }
     private delegate bool Callback(IntPtr handle, IntPtr parameter);
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }

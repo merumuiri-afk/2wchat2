@@ -18,6 +18,8 @@ public sealed partial class RoomClient
     private ScreenShareInfo[] _screens = [];
     private readonly object _screenStateGate = new();
     private long _screenRevision;
+    private long _screenSendMilliseconds;
+    public long ScreenSendMilliseconds => Interlocked.Read(ref _screenSendMilliseconds);
     public bool SupportsScreenShare { get; private set; }
     public ScreenShareInfo[] Screens => Volatile.Read(ref _screens);
     public bool IsScreenSharing => Volatile.Read(ref _publishingScreen) is { Closed: false };
@@ -163,7 +165,9 @@ public sealed partial class RoomClient
             await foreach (var jpeg in connection.Frames.Reader.ReadAllAsync(connection.Stop.Token))
             {
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(connection.Stop.Token); timeout.CancelAfter(TimeSpan.FromSeconds(3));
+                var sent = System.Diagnostics.Stopwatch.StartNew();
                 await ScreenWire.WriteFrameAsync(connection.Stream, jpeg, timeout.Token);
+                Interlocked.Exchange(ref _screenSendMilliseconds, sent.ElapsedMilliseconds);
             }
         }
         catch (Exception e) when (e is IOException or SocketException or OperationCanceledException or ObjectDisposedException)

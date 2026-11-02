@@ -31,13 +31,23 @@ public sealed partial class MainForm
         }
         cover.Close();
         results.Add("Source picker selects a native window and captures its generated pixels while another generated window covers it");
-        var frames = 0;
+        var frames = 0; var coloredFrames = 0; var maximumWidth = 0;
         await using (var capture = new ScreenCaptureService(new ScreenCaptureOptions(target.Bounds, 5, 60, false, handle, target.ProcessId)))
         {
-            capture.FrameCaptured += _ => Interlocked.Increment(ref frames); capture.Start();
+            capture.FrameCaptured += jpeg =>
+            {
+                using var memory = new MemoryStream(jpeg); using var decoded = new Bitmap(memory);
+                maximumWidth = Math.Max(maximumWidth, decoded.Width);
+                var gold = 0;
+                for (var y = 0; y < decoded.Height; y += 10) for (var x = 0; x < decoded.Width; x += 10) { var p = decoded.GetPixel(x, y); if (p.R > 200 && p.G > 160 && p.B < 80) gold++; }
+                if (gold > 20) Interlocked.Increment(ref coloredFrames);
+                Interlocked.Increment(ref frames);
+            }; capture.Start();
             var wait = System.Diagnostics.Stopwatch.StartNew();
             while (frames < 2 && wait.ElapsedMilliseconds < 5000) await Task.Delay(30);
-            await capture.StopAsync(); if (frames < 2) throw new IOException("Live native window capture did not emit frames");
+            var previousWidth = maximumWidth; fixture.ClientSize = new Size(480, 320);
+            while (maximumWidth <= previousWidth && wait.ElapsedMilliseconds < 7000) await Task.Delay(30);
+            await capture.StopAsync(); if (frames < 2 || coloredFrames < 2 || maximumWidth <= previousWidth) throw new IOException("Live WGC capture pixels or resize failed");
         }
         results.Add("Live capture service encodes multiple frames from the chosen window and stops cleanly");
         fixture.WindowState = FormWindowState.Minimized; await Task.Delay(100);
