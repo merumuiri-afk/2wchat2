@@ -89,7 +89,7 @@ public static class ImagePreparation
         var scale = Math.Min(1d, Math.Min(320d / decoded.Width, 220d / decoded.Height));
         var bitmap = new Bitmap(Math.Max(1, (int)(decoded.Width * scale)), Math.Max(1, (int)(decoded.Height * scale)));
         using var graphics = Graphics.FromImage(bitmap);
-        graphics.Clear(Color.White); graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+        graphics.Clear(payload.Info.IsSticker ? Color.Transparent : Color.White); graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
         graphics.DrawImage(decoded, new Rectangle(Point.Empty, bitmap.Size)); return bitmap;
     }
     public static Image OpenAnimation(ImagePayload payload)

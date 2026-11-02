@@ -70,6 +70,7 @@ public sealed partial class MainForm : Form
         _watchScreen.Click += async (_, _) => await ToggleScreenViewerAsync();
         _chat.ImageOpenRequested += OpenImage;
         _chat.AvatarOpenRequested += ShowAvatar;
+        _chat.StickerSaveRequested += SaveAsSticker;
         _people.DoubleClick += (_, _) => { if (SelectedPeer() is { } peer) ShowAvatar(peer.Id, peer.Name); };
         _chat.ImageRequested += info => { if (_client?.Connected == true) _client.RequestImage(info); else _chat.ImageFailed(info.Id, "Соединение с комнатой закрыто."); };
         _chat.Error += AppendNotice;
@@ -101,6 +102,7 @@ public sealed partial class MainForm : Form
         var tools = new ToolStripMenuItem("&Сервис");
         tools.DropDownItems.Add("Настройки звука…", null, (_, _) => OpenSettings());
         tools.DropDownItems.Add("Мини-окно участников", null, (_, _) => EnterCompact());
+        tools.DropDownItems.Add("Мои стикеры…", null, async (_, _) => await OpenStickersAsync());
         tools.DropDownItems.Add("Моя аватарка…", null, async (_, _) => await OpenAvatarAsync());
         tools.DropDownItems.Add("Предложить название комнаты…", null, async (_, _) => await ProposeRoomNameAsync());
         tools.DropDownItems.Add("Мой IP и подключение…", null, (_, _) => ShowAddresses());
@@ -154,12 +156,13 @@ public sealed partial class MainForm : Form
         right.RowStyles.Add(new RowStyle(SizeType.Absolute, 24)); right.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); right.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
         _roomLabel.Text = " Общий чат"; _roomLabel.Dock = DockStyle.Fill; _roomLabel.TextAlign = ContentAlignment.MiddleLeft;
         _chat.Dock = DockStyle.Fill; _chat.BackColor = Color.White; _chat.Font = new Font("Tahoma", 9); _chat.AccessibleName = "Переписка";
-        var compose = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1, Margin = new Padding(0, 5, 0, 0) };
-        compose.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); compose.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100)); compose.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 105));
+        var compose = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1, Margin = new Padding(0, 5, 0, 0) };
+        compose.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); compose.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100)); compose.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 85)); compose.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 105));
         _message.Multiline = true; _message.AcceptsReturn = true; _message.ScrollBars = ScrollBars.Vertical; _message.MaxLength = Protocol.MaxTextLength; _message.Dock = DockStyle.Fill; _message.AccessibleName = "Текст сообщения";
         _send.Text = "Отправить\nEnter"; _send.Dock = DockStyle.Fill;
         _attachImage.Text = "Картинка…\nCtrl+O"; _attachImage.Dock = DockStyle.Fill;
-        compose.Controls.Add(_message, 0, 0); compose.Controls.Add(_attachImage, 1, 0); compose.Controls.Add(_send, 2, 0);
+        var stickers = new Button { Text = "Стикеры", Dock = DockStyle.Fill }; stickers.Click += async (_, _) => await OpenStickersAsync();
+        compose.Controls.Add(_message, 0, 0); compose.Controls.Add(_attachImage, 1, 0); compose.Controls.Add(stickers, 2, 0); compose.Controls.Add(_send, 3, 0);
         right.Controls.Add(_roomLabel, 0, 0); right.Controls.Add(_chat, 0, 1); right.Controls.Add(compose, 0, 2); split.Panel2.Controls.Add(right); root.Controls.Add(split, 0, 3);
         var audio = new FlowLayoutPanel { Dock = DockStyle.Fill, WrapContents = false, Padding = new Padding(0, 8, 0, 0) };
         _mute.Appearance = Appearance.Button; _deafen.Appearance = Appearance.Button;

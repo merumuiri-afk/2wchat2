@@ -49,6 +49,20 @@ internal static partial class Program
             (animated.Tag as Stream)?.Dispose();
         }
         var delivered = new TaskCompletionSource<ImagePayload>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (var stickerSource = new Bitmap(64, 64))
+        {
+            using (var g = Graphics.FromImage(stickerSource)) { g.Clear(Color.White); g.FillRectangle(Brushes.Red, 16, 16, 32, 32); }
+            var sticker = StickerLibrary.Prepare(ImagePreparation.FromBitmap(stickerSource), true);
+            using var pixels = ImagePreparation.Decode(sticker);
+            Check(sticker.Info.IsSticker && pixels.GetPixel(0, 0).A == 0 && pixels.GetPixel(32, 32).R > 200 && pixels.GetPixel(32, 32).A == 255, "Sticker creation removes edge background while preserving foreground pixels");
+            var receivedSticker = new TaskCompletionSource<ImagePayload>(TaskCreationOptions.RunContinuationsAsynchronously);
+            b.ImageReceived += p => { if (p.Info.IsSticker) receivedSticker.TrySetResult(p); };
+            await a.SendImageAsync(sticker, "Стикер");
+            var deliveredSticker = await receivedSticker.Task.WaitAsync(TimeSpan.FromSeconds(8));
+            Check(deliveredSticker.Info.IsSticker && deliveredSticker.Data.SequenceEqual(sticker.Data), "Sticker marker and transparent PNG bytes survive TLS delivery");
+            using var thumbnail = ImagePreparation.Thumbnail(deliveredSticker);
+            Check(thumbnail.GetPixel(0, 0).A == 0, "Chat sticker thumbnail preserves transparency");
+        }
         b.ImageReceived += p => { if (p.Info.ContentType == "image/gif") delivered.TrySetResult(p); };
         await a.SendImageAsync(gif, "Animated GIF");
         Check((await delivered.Task.WaitAsync(TimeSpan.FromSeconds(8))).Data.SequenceEqual(gifBytes), "Animated GIF crosses TLS image transport without flattening");

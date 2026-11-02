@@ -3,7 +3,10 @@ using System.Security.Cryptography;
 
 namespace TwoWChat.Core;
 
-public sealed record ImageInfo(Guid Id, string FileName, string ContentType, int Length, int Width, int Height, string Sha256);
+public sealed record ImageInfo(Guid Id, string FileName, string ContentType, int Length, int Width, int Height, string Sha256)
+{
+    public bool IsSticker { get; init; }
+}
 public sealed record ImagePayload(ImageInfo Info, byte[] Data);
 
 public static class ImageAttachments
@@ -26,6 +29,7 @@ public static class ImageAttachments
 
     public static void ValidateInfo(ImageInfo? info)
     {
+        if (info?.IsSticker == true && (info.ContentType != "image/png" || info.Width > 512 || info.Height > 512 || info.Length > 1024 * 1024)) throw new InvalidDataException("Стикер должен быть PNG до 512×512 и 1 МиБ.");
         if (info == null || info.Id == Guid.Empty || info.Length is < 24 or > Protocol.MaxImageBytes ||
             info.Width is < 1 or > Protocol.MaxImageDimension || info.Height is < 1 or > Protocol.MaxImageDimension ||
             info.ContentType is not ("image/png" or "image/jpeg" or "image/gif") ||

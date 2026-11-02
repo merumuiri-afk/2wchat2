@@ -181,6 +181,25 @@ public sealed partial class MainForm
             }
             await RunScreenUiSmokeAsync(directory, results, bot);
             await RunCompactUiSmokeAsync(directory, results, bot);
+            using (var stickerBitmap = new Bitmap(100, 100))
+            {
+                using (var g = Graphics.FromImage(stickerBitmap)) { g.Clear(Color.Transparent); g.FillEllipse(Brushes.Gold, 5, 5, 90, 90); g.FillRectangle(Brushes.Navy, 25, 40, 50, 20); }
+                var sticker = StickerLibrary.Prepare(ImagePreparation.FromBitmap(stickerBitmap));
+                var file = StickerLibrary.Save(sticker);
+                if (!StickerLibrary.Load(file).Data.SequenceEqual(sticker.Data) || StickerLibrary.Save(sticker) != file) throw new IOException("Sticker library persistence or deduplication failed");
+                using (var picker = new StickerPickerForm())
+                {
+                    picker.Show(this); await Task.Delay(100);
+                    using var shot = new Bitmap(picker.Width, picker.Height); picker.DrawToBitmap(shot, new Rectangle(Point.Empty, picker.Size)); shot.Save(Path.Combine(directory, "sticker-picker.png"));
+                    typeof(Control).GetMethod("OnClick", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.Invoke(DescendantControls(picker).OfType<PictureBox>().First(), [EventArgs.Empty]);
+                    if (picker.Selected?.Info.IsSticker != true) throw new IOException("Sticker picker did not select a sendable sticker");
+                }
+                results.Add("Sticker library persists and deduplicates PNGs; picker renders thumbnails and selects a sticker");
+                await bot.SendImageAsync(sticker, "Стикер"); await Task.Delay(300);
+                if (!DescendantControls(_chat).OfType<PictureBox>().Any(p => p.Image != null && p.BorderStyle == BorderStyle.None && p.Image.Width == 100)) throw new IOException("Chat did not render a borderless sticker");
+                using var image = new Bitmap(Width, Height); DrawToBitmap(image, new Rectangle(Point.Empty, Size)); image.Save(Path.Combine(directory, "sticker-in-chat.png"));
+                results.Add("Received sticker renders in chat without picture border, caption or filename");
+            }
             var gifData = Convert.FromHexString("47494638396101000100800000000000FFFFFF21F904000A0000002C000000000100010000020244010021F904000A0000002C00000000010001000002024C01003B");
             await bot.SendImageAsync(ImageAttachments.Create(gifData, "animation.gif"), "GIF animation");
             await Task.Delay(500);

@@ -21,6 +21,7 @@ public sealed class ChatView : UserControl
     }
     public event Action<ImagePayload>? ImageOpenRequested;
     public event Action<Guid, string>? AvatarOpenRequested;
+    public event Action<ImagePayload>? StickerSaveRequested;
     public event Action<ImageInfo>? ImageRequested;
     public event Action<string>? Error;
     public int ImageCount => _rows.Count(r => r.Entry?.Image != null);
@@ -39,10 +40,13 @@ public sealed class ChatView : UserControl
         var open = new ToolStripMenuItem("Открыть изображение"); open.Click += (_, _) => _contextRow?.Open();
         var save = new ToolStripMenuItem("Сохранить изображение…"); save.Click += (_, _) => { if (_contextRow?.Payload is { } image) ImageViewerForm.SaveImage(FindForm()!, image); };
         _menu.Items.AddRange([copy, all, new ToolStripSeparator(), open, save]);
+        var sticker = new ToolStripMenuItem("Добавить в мои стикеры");
+        sticker.Click += (_, _) => { if (_contextRow?.Payload is { } payload) StickerSaveRequested?.Invoke(payload); }; _menu.Items.Add(sticker);
         _menu.Opening += (_, _) =>
         {
             _contextRow = _menu.SourceControl?.Tag as ChatRow;
             copy.Enabled = _contextRow != null; open.Enabled = _contextRow?.Entry?.Image != null; save.Enabled = _contextRow?.Payload != null;
+            sticker.Enabled = _contextRow?.Payload != null;
         };
         _flow.ContextMenuStrip = _menu;
     }
@@ -134,7 +138,7 @@ public sealed class ChatView : UserControl
         public ChatRow(ChatEntry? entry, string? notice, bool own, Font font, ContextMenuStrip menu)
         {
             Entry = entry; Font = font; BackColor = Color.White; Margin = new Padding(0, 0, 0, 5); DoubleBuffered = true;
-            _showBody = entry?.Image == null || entry.Text != "Изображение: " + entry.Image.FileName;
+            _showBody = entry?.Image?.IsSticker != true && (entry?.Image == null || entry.Text != "Изображение: " + entry.Image.FileName);
             _headingFont = new Font(font, FontStyle.Bold);
             if (entry != null)
             {
@@ -159,6 +163,7 @@ public sealed class ChatView : UserControl
                 _imageLink.Text = ImagePreparation.Description(image) + "\nНажмите для просмотра";
                 _imageLink.LinkClicked += (_, _) => Open(); _picture.Click += (_, _) => Open(); _placeholder.Click += (_, _) => Open();
                 Controls.AddRange([_picture, _placeholder, _imageLink]);
+                if (image.IsSticker) { _picture.BorderStyle = BorderStyle.None; _imageLink.Visible = false; }
                 _body.Visible = _showBody;
             }
             foreach (Control control in Controls) { control.Tag = this; control.ContextMenuStrip = menu; }
@@ -176,9 +181,9 @@ public sealed class ChatView : UserControl
             }
             if (Entry?.Image is { } info)
             {
-                var pictureWidth = Math.Min(320, width); var pictureHeight = Math.Clamp((int)(pictureWidth * (double)info.Height / info.Width), 65, 220);
+                var pictureWidth = Math.Min(info.IsSticker ? 160 : 320, width); var pictureHeight = Math.Clamp((int)(pictureWidth * (double)info.Height / info.Width), 65, info.IsSticker ? 160 : 220);
                 _picture.SetBounds(0, top, pictureWidth, pictureHeight); _placeholder.SetBounds(0, top, pictureWidth, pictureHeight);
-                _imageLink.SetBounds(0, top + pictureHeight + 3, width, 35); top += pictureHeight + 40;
+                _imageLink.SetBounds(0, top + pictureHeight + 3, width, 35); top += pictureHeight + (info.IsSticker ? 4 : 40);
             }
             Height = Math.Max(22, top + 2);
         }

@@ -34,7 +34,7 @@ public sealed partial class MainForm
         catch (Exception e) when (IsImageError(e)) { ShowError("Не удалось подготовить изображение: " + e.Message); }
         finally { _preparingImage = false; if (!IsDisposed) UpdateImageButton(); }
     }
-    private static bool IsImageError(Exception e) => e is IOException or UnauthorizedAccessException or ArgumentException or ExternalException or InvalidOperationException or OutOfMemoryException;
+    private static bool IsImageError(Exception e) => e is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or ExternalException or InvalidOperationException or OutOfMemoryException;
     private static bool ClipboardHasImage()
     {
         try { return Clipboard.ContainsImage() || Clipboard.ContainsFileDropList(); } catch (ExternalException) { return false; }
