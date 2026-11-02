@@ -12,7 +12,7 @@ if (!(Test-Path -LiteralPath $compiler)) {
     $signature = Get-AuthenticodeSignature -LiteralPath $download
     if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notlike '*Pyrsys B.V.*') { throw 'Inno Setup signature mismatch' }
     $destination = Split-Path -Parent $compiler
-    $process = Start-Process -FilePath $download -ArgumentList @('/PORTABLE=1','/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="' + $destination + '"')) -PassThru -WindowStyle Hidden
+    $process = Start-Process -FilePath $download -ArgumentList @('/CURRENTUSER','/PORTABLE=1','/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="' + $destination + '"')) -PassThru -WindowStyle Hidden
     $process.WaitForExit()
     if ($process.ExitCode -ne 0) { throw 'Portable compiler setup failed' }
 }
